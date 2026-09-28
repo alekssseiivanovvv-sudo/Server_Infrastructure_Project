@@ -37,3 +37,9 @@ west_storage
 cloud_router
 load_balancer
 monitoring
+
+[host_1]
+100.64.10.0
+
+[host_2]
+100.64.20.0
