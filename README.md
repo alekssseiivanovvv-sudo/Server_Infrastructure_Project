@@ -1,2 +1,2 @@
-# Server_Infastructure_Project
+# Server_Infrastructure_Project
 Repository for Ansible
