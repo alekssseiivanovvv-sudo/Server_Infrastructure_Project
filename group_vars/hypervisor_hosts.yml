@@ -7,4 +7,3 @@ libvirt_packages:
   - libvirt-daemon-system
   - libvirt-clients
   - libvirt-daemon-config-network
-  - python3-lxml

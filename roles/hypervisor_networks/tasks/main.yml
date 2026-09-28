@@ -1,48 +1,47 @@
 ---
-- name: Install libvirt and Python bindings
+- name: Install libvirt
   ansible.builtin.apt:
     name: "{{ libvirt_packages }}"
     state: present
     update_cache: true
     cache_valid_time: 3600
 
-- name: Define internal network if absent
-  community.libvirt.virt_net:
-    name: internal
-    state: present
-    xml: |
+- name: Write internal network definition
+  ansible.builtin.copy:
+    dest: /tmp/lab-internal.xml
+    mode: '0644'
+    content: |
       <network>
         <name>internal</name>
         <bridge name='virbr-internal'/>
       </network>
 
-- name: Start internal network
-  community.libvirt.virt_net:
-    name: internal
-    state: active
-
-- name: Enable internal network at boot
-  community.libvirt.virt_net:
-    name: internal
-    autostart: true
-
-- name: Define management network if absent
-  community.libvirt.virt_net:
-    name: management
-    state: present
-    xml: |
+- name: Write management network definition
+  ansible.builtin.copy:
+    dest: /tmp/lab-management.xml
+    mode: '0644'
+    content: |
       <network>
         <name>management</name>
         <bridge name='virbr-mgmt'/>
         <ip address='{{ management_host_ip }}' prefix='27'/>
       </network>
 
-- name: Start management network
-  community.libvirt.virt_net:
-    name: management
-    state: active
+- name: Create and enable internal network if missing
+  ansible.builtin.shell: |
+    set -eu
+    virsh -c qemu:///system net-define /tmp/lab-internal.xml
+    virsh -c qemu:///system net-start internal
+    virsh -c qemu:///system net-autostart internal
+  args:
+    creates: /etc/libvirt/qemu/networks/internal.xml
 
-- name: Enable management network at boot
-  community.libvirt.virt_net:
-    name: management
-    autostart: true
+- name: Create and enable management network if missing
+  ansible.builtin.shell: |
+    set -eu
+    virsh -c qemu:///system net-define /tmp/lab-management.xml
+    virsh -c qemu:///system net-start management
+    virsh -c qemu:///system net-autostart management
+  args:
+    creates: /etc/libvirt/qemu/networks/management.xml
+
