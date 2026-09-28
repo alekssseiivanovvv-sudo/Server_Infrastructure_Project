@@ -1,0 +1,7 @@
+---
+- name: Prepare libvirt networks on both hypervisors
+  hosts: hypervisor_hosts
+  become: true
+  gather_facts: false
+  roles:
+    - hypervisor_networks
