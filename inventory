@@ -51,5 +51,5 @@ balance_servers
 monitoring_servers
 
 [hypervisor_hosts]
-host_1 ansible_host=100.64.10.0
-host_2 ansible_host=100.64.20.0
+host_1 ansible_host=100.64.0.10
+host_2 ansible_host=100.64.0.11

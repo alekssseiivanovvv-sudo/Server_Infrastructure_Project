@@ -1,0 +1,17 @@
+sudo virt-install \
+  --connect qemu:///system \
+  --name automation-node \
+  --memory 2048 \
+  --vcpus 1 \
+  --cpu host-passthrough \
+  --disk path='/mnt/p5+/KVM/automation-node.qcow2',format=qcow2,bus=virtio \
+  --cdrom '/mnt/a400/ISO/ubuntu-24.04.3-live-server-amd64.iso' \
+  --os-variant ubuntu24.04 \
+  --network network=default,model=virtio \
+  --network network=internal,model=virtio \
+  --network network=management,model=virtio \
+  --graphics spice \
+  --video virtio \
+  --channel spicevmc \
+  --boot uefi \
+  --noautoconsole
