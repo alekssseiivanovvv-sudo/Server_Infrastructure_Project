@@ -1,0 +1,22 @@
+---
+- name: Create administrator accounts
+  hosts: hypervisor_hosts:linux_servers
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  tasks:
+    - name: Create users with sudo access
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        password: "{{ item.password_hash }}"
+        update_password: always
+        shell: /bin/bash
+        groups:
+          - sudo
+        append: true
+        create_home: true
+        state: present
+      loop: "{{ vault_admin_users }}"
