@@ -1,25 +1,26 @@
 ---
-  - name: Prepare automation accound on hypervisor hosts
-    hosts: hypervisor_hosts
-    become: true
-    gather_facts: false
-    serial: 1
+- name: Prepare automation account on hypervisor hosts
+  hosts: hypervisor_hosts
+  become: true
+  gather_facts: false
+  serial: 1
 
-    vars_files:
-      - group_vars/group/all/vault.yml
+  vars_files:
+    - group_vars/group/all/vault.yml
 
-    vars:
-      ansible_user: "{{ bootstrap_user | default('ansible_admin') }}"
-      selected_admin_users: >-
-        {{
-          vault_admin_users
-          | selectattr('name', 'equalto', 'ansible_admin')
-          | list
-        }}
-    tasks:
+  vars:
+    ansible_user: "{{ bootstrap_user | default('ansible_admin') }}"
 
-      - name: Create ansible_admin
-        ansible.builtin.user:
+    selected_admin_users: >-
+      {{
+        vault_admin_users
+        | selectattr('name', 'equalto', 'ansible_admin')
+        | list
+      }}
+
+  tasks:
+    - name: Create ansible_admin
+      ansible.builtin.user:
         name: "{{ item.name }}"
         password: "{{ item.password_hash }}"
         update_password: always
@@ -29,55 +30,54 @@
         append: true
         create_home: true
         state: present
-        loop: "{{ selected_admin_users }}"
-        no_log: true
+      loop: "{{ selected_admin_users }}"
+      no_log: true
 
-      - name: Add SSH key for ansible_admin
-        ansible.posix.authorized_key:
-          user: ansible_admin
-          key: "{{ lookup('ansible.builtin.file'. '~/.ssh/ansible.pub') }}"
-          state: present
+    - name: Add SSH key for ansible_admin
+      ansible.posix.authorized_key:
+        user: ansible_admin
+        key: "{{ lookup('ansible.builtin.file', '~/.ssh/ansible.pub') }}"
+        state: present
 
-      - name: Configure passwordless sudo for ansible_admin
+    - name: Configure passwordless sudo for ansible_admin
       ansible.builtin.copy:
         dest: /etc/sudoers.d/99-ansible-admin
         owner: root
         group: root
         mode: '0440'
         content: |
-          # managed by Ansible
+          # Managed by Ansible
           ansible_admin ALL=(ALL:ALL) NOPASSWD: ALL
         validate: /usr/sbin/visudo -cf %s
 
-      - name: Verify ansible admin and SSH
-        hosts: hypervisor_hosts
-        become: false
-        gather_facts: false
-        serial: 1
-        any_errors_fatal: true
+- name: Verify ansible_admin and configure SSH
+  hosts: hypervisor_hosts
+  become: false
+  gather_facts: false
+  serial: 1
 
-        vars:
-          ansible_user: ansible_admin
-          ansible_password: ""
-          ansible_become_password: ""
+  vars:
+    ansible_user: ansible_admin
+    ansible_password: ""
+    ansible_become_password: ""
 
-          ansible_ssh_extra_args: >-
-            -o PreferredAuthentications=publickey
-            -o PasswordAuthentication=no
-            -o KbdInteractiveAuthentication=no
+    ansible_ssh_extra_args: >-
+      -o PreferredAuthentications=publickey
+      -o PasswordAuthentication=no
+      -o KbdInteractiveAuthentication=no
 
-        tasks:
-          - name: Close existing SSH connection
-            ansible.builtin.meta: reset connection
+  tasks:
+    - name: Close existing SSH connection
+      ansible.builtin.meta: reset_connection
 
-          - name: Check SSH connection and passwordless sudo
-            ansible.builtin.command: sudo -n id -u
-            register: sudo check
-            changed_when: false
-            failed_when: sudo_check.stdout != '0'
+    - name: Check SSH connection and passwordless sudo
+      ansible.builtin.command: sudo -n id -u
+      register: sudo_check
+      changed_when: false
+      failed_when: sudo_check.stdout != '0'
 
-          - name: Configure SSH
-            ansible.builtin.include_role:
-              name: automation_sshd
-              apply:
-                become: true
+    - name: Configure SSH
+      ansible.builtin.include_role:
+        name: automation_sshd
+        apply:
+          become: true
