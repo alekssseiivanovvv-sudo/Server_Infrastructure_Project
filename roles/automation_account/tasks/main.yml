@@ -1,0 +1,32 @@
+---
+tasks:
+    - name: Create ansible_admin
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        password: "{{ item.password_hash }}"
+        update_password: always
+        shell: /bin/bash
+        groups:
+          - sudo
+        append: true
+        create_home: true
+        state: present
+      loop: "{{ selected_admin_users }}"
+      no_log: true
+
+    - name: Add SSH key for ansible_admin
+      ansible.posix.authorized_key:
+        user: ansible_admin
+        key: "{{ lookup('ansible.builtin.file', '~/.ssh/ansible.pub') }}"
+        state: present
+
+    - name: Configure passwordless sudo for ansible_admin
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/99-ansible-admin
+        owner: root
+        group: root
+        mode: '0440'
+        content: |
+          # Managed by Ansible
+          ansible_admin ALL=(ALL:ALL) NOPASSWD: ALL
+        validate: /usr/sbin/visudo -cf %s
