@@ -19,7 +19,7 @@
     tasks:
 
       - name: Create ansible_admin
-      ansible.builtin.user:
+        ansible.builtin.user:
         name: "{{ item.name }}"
         password: "{{ item.password_hash }}"
         update_password: always
@@ -29,8 +29,14 @@
         append: true
         create_home: true
         state: present
-      loop: "{{ selected_admin_users }}"
-      no_log: true
+        loop: "{{ selected_admin_users }}"
+        no_log: true
+
+      - name: Add SSH key for ansible_admin
+        ansible.posix.authorized_key:
+          user: ansible_admin
+          key: "{{ lookup('ansible.builtin.file'. '~/.ssh/ansible.pub') }}"
+          state: present
 
       - name: Configure passwordless sudo for ansible_admin
       ansible.builtin.copy:
@@ -45,7 +51,7 @@
 
       - name: Verify ansible admin and SSH
         hosts: hypervisor_hosts
-        become: true
+        become: false
         gather_facts: false
         serial: 1
         any_errors_fatal: true
@@ -56,9 +62,9 @@
           ansible_become_password: ""
 
           ansible_ssh_extra_args: >-
-            -o PrefferedAuthentifications=publickey
-            -o PasswordAuthentification=no
-            -o KbdInteractiveAuthentification=no
+            -o PreferredAuthentications=publickey
+            -o PasswordAuthentication=no
+            -o KbdInteractiveAuthentication=no
 
         tasks:
           - name: Close existing SSH connection
