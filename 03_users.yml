@@ -1,6 +1,6 @@
 ---
 - name: Create administrator accounts
-  hosts: hypervisor_hosts:linux_servers
+  hosts: linux_servers
   become: true
   gather_facts: false
 
