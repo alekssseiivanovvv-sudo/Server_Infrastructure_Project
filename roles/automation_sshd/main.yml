@@ -1,0 +1,18 @@
+---
+- name: Configure SSH for ansible_admin
+  ansible.builtin.blockinfile:
+    path: /etc/ssh/sshd_config
+    insertafter: EOF
+    markes: '# {mark} ANSIBLE AUTOMATION ACCOUNT'
+    block: |
+      Match User ansible_admin
+          AuthenticationMethods publickey
+          PubkeyAuthentication yes
+          PasswordAuthenication no
+          KbdIneractiveAuthentication no
+      Match all
+    backup: true
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Reload SSH
+
+
