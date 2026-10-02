@@ -18,6 +18,9 @@
         | list
       }}
 
+  roles:
+    - automation_account
+
 - name: Verify ansible_admin and configure SSH
   hosts: hypervisor_hosts
   become: false
