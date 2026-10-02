@@ -20,3 +20,4 @@
         create_home: true
         state: present
       loop: "{{ vault_admin_users }}"
+      no_log: true
