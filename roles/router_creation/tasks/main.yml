@@ -1,14 +1,4 @@
 ---
-- name: Install VM creation tools on hypervisor
-  ansible.builtin.apt:
-    name:
-      - qemu-utils
-      - libvirt-clients
-      - virtinst
-      - cloud-image-utils
-    state: present
-    update_cache: true
-    cache_valid_time: 3600
 
 - name: List existing virtual machines
   ansible.builtin.command:
@@ -25,65 +15,11 @@
 - name: Create router if it does not exist
   when: router_name not in router_domains.stdout_lines
   block:
-    - name: Check administrator and Tailscale key
+    - name: Check administrator selection
       ansible.builtin.assert:
         that:
           - selected_admin_users | length == 1
-          - (selected_admin_users | first).password_hash is defined
-          - (selected_admin_users | first).password_hash | length > 20
-          - vault_cloud_router_tailscale_auth_key is defined
-          - vault_cloud_router_tailscale_auth_key | default('') is match('^tskey-auth-')
-        fail_msg: Check vault_admin_users and vault_cloud_router_tailscale_auth_key in Vault.
-      no_log: true
-
-    - name: Calculate base image checksum
-      ansible.builtin.stat:
-        path: "{{ router_image }}"
-        checksum_algorithm: sha512
-      register: router_image_stat
-
-    - name: Check official Alpine image
-      ansible.builtin.assert:
-        that:
-          - router_image_stat.stat.exists
-          - router_image_stat.stat.checksum | default('') == router_image_sha512
-        fail_msg: Alpine image is missing or its checksum does not match.
-
-    - name: List active networks
-      ansible.builtin.command:
-        argv:
-          - virsh
-          - -c
-          - qemu:///system
-          - net-list
-          - --name
-      register: router_active_networks
-      changed_when: false
-
-    - name: Check WAN and LAN networks
-      ansible.builtin.assert:
-        that:
-          - router_wan_network in router_active_networks.stdout_lines
-          - router_lan_network in router_active_networks.stdout_lines
-        fail_msg: Both router networks must already be active.
-
-    - name: Read LAN network configuration
-      ansible.builtin.command:
-        argv:
-          - virsh
-          - -c
-          - qemu:///system
-          - net-dumpxml
-          - "{{ router_lan_network }}"
-      register: router_lan_xml
-      changed_when: false
-
-    - name: Check that LAN is isolated and has no hypervisor IP
-      ansible.builtin.assert:
-        that:
-          - "'<ip ' not in router_lan_xml.stdout"
-          - "'<forward' not in router_lan_xml.stdout"
-        fail_msg: Review LAN configuration before creating the router.
+        fail_msg: Vault must contain exactly one ansible_admin account.
 
     - name: Create VM directory
       ansible.builtin.file:

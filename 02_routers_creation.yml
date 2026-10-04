@@ -27,7 +27,6 @@
       vars:
         router_name: "{{ router_spec.name }}"
         router_hostname: "{{ router_spec.hostname }}"
-        router_instance_id: "{{ router_spec.hostname }}-001"
         router_lan_address: "{{ router_spec.lan_address }}"
         router_wan_mac: "{{ router_spec.wan_mac }}"
         router_lan_mac: "{{ router_spec.lan_mac }}"
