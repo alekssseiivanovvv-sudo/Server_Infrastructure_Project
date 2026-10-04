@@ -109,37 +109,24 @@
         group: kvm
         mode: "0640"
 
-    - name: Create and start router VM
-      ansible.builtin.command:
-        argv:
-          - virt-install
-          - --connect
-          - qemu:///system
-          - --name
-          - "{{ router_name }}"
-          - --memory
-          - "{{ router_memory_mb | string }}"
-          - --vcpus
-          - "{{ router_vcpus | string }}"
-          - --osinfo
-          - generic
-          - --import
-          - --boot
-          - hd
-          - --disk
-          - "path={{ router_disk }},format=qcow2,bus=virtio"
-          - --disk
-          - "path={{ router_directory }}/seed.iso,format=raw,device=cdrom"
-          - --network
-          - "network={{ router_wan_network }},model=virtio,mac={{ router_wan_mac }}"
-          - --network
-          - "network={{ router_lan_network }},model=virtio,mac={{ router_lan_mac }}"
-          - --graphics
-          - none
-          - --console
-          - pty,target_type=serial
-          - --noautoconsole
-          - --autostart
+- name: Create and start router VM
+      ansible.builtin.command: >-
+        virt-install
+        --connect qemu:///system
+        --name {{ router_name | quote }}
+        --memory {{ router_memory_mb }}
+        --vcpus {{ router_vcpus }}
+        --osinfo generic
+        --import
+        --boot hd
+        --disk {{ ('path=' ~ router_disk ~ ',format=qcow2,bus=virtio') | quote }}
+        --disk {{ ('path=' ~ router_directory ~ '/seed.iso,format=raw,device=cdrom') | quote }}
+        --network network={{ router_wan_network }},model=virtio,mac={{ router_wan_mac }}
+        --network network={{ router_lan_network }},model=virtio,mac={{ router_lan_mac }}
+        --graphics none
+        --console pty,target_type=serial
+        --noautoconsole
+        --autostart
 
 - name: Show next verification step
   ansible.builtin.debug:
