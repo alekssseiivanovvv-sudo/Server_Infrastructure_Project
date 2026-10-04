@@ -17,9 +17,12 @@ load_balancer ansible_host=192.168.74.4
 monitoring ansible_host=192.168.74.3
 
 [routers]
-east_router ansible_host=100.64.0.2  lan_subnet=192.168.72.1/27
-west_router ansible_host=100.64.0.3 lan_subnet=192.168.73.1/27
-cloud_router ansible_host=100.64.0.1 lan_subnet=192.168.74.1/27
+east_router ansible_host=100.64.0.2
+west_router ansible_host=100.64.0.3
+cloud_router ansible_host=100.64.0.1
+
+[routers:vars]
+ansible_port={{ vault_router_ssh_port }}
 
 [east]
 east_router
