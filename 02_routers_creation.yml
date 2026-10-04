@@ -1,0 +1,19 @@
+---
+- name: Create the first Alpine cloud router
+  hosts: host_1
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    selected_admin_users: >-
+      {{
+        vault_admin_users
+        | selectattr('name', 'equalto', 'ansible_admin')
+        | list
+      }}
+
+  roles:
+    - router_creation
