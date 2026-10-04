@@ -64,8 +64,6 @@
     - group_vars/group/all/vault.yml
 
   vars:
-    # Change to true after host_2 is ready.
-    create_west: false
 
     router_name: west_router
     router_hostname: west-router
