@@ -1,5 +1,2 @@
 ---
 ansible_become_exe: /usr/bin/sudo.ws
-
-vm_image: /mnt/a400/ISO/ubuntu-26.04-server-cloudimg-amd64.img
-vm_storage_directory: /mnt/p5+/KVM
