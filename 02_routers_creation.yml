@@ -21,8 +21,6 @@
     router_wan_mac: "52:54:00:74:01:01"
     router_lan_mac: "52:54:00:74:01:02"
 
-    selected_admin_users: "{{ vault_admin_users | selectattr('name', 'equalto', 'ansible_admin') | list }}"
-
   roles:
     - router_creation
 
@@ -49,8 +47,6 @@
     router_wan_mac: "52:54:00:72:01:01"
     router_lan_mac: "52:54:00:72:01:02"
 
-    selected_admin_users: "{{ vault_admin_users | selectattr('name', 'equalto', 'ansible_admin') | list }}"
-
   roles:
     - router_creation
 
@@ -65,11 +61,13 @@
 
   vars:
 
+    create_west: false
+
     router_name: west_router
     router_hostname: west-router
     router_instance_id: west-router-001
 
-    # Fill in paths on host_2 before enabling West.
+    # Пути пока неизвестны.
     router_image: ""
     router_directory: ""
     router_disk: ""
@@ -78,8 +76,6 @@
     router_lan_subnet: 192.168.73.0/27
     router_wan_mac: "52:54:00:73:01:01"
     router_lan_mac: "52:54:00:73:01:02"
-
-    selected_admin_users: "{{ vault_admin_users | selectattr('name', 'equalto', 'ansible_admin') | list }}"
 
   roles:
     - role: router_creation
