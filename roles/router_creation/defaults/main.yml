@@ -1,0 +1,25 @@
+---
+router_name: cloud_router
+router_hostname: cloud-router
+router_instance_id: cloud-router-001
+
+router_image: /mnt/a400/ISO/alpine-3.24.2-x86_64-cloudinit-r0.qcow2
+router_image_sha512: c9504d23613f304e0cfb6f5fec872e29e5a5a62e2bc64796daf19c14fdddaa87dc252912fd8bdd17f7b8ebf0cd03305e4075993d54de175e6028d6b50414c67f
+
+router_directory: "/mnt/p5+/KVM/{{ router_name }}"
+router_disk: "{{ router_directory }}/{{ router_name }}.qcow2"
+router_disk_size_bytes: 2147483648
+
+router_memory_mb: 1024
+router_vcpus: 1
+
+router_wan_network: default
+router_lan_network: internal
+
+router_wan_mac: "52:54:00:74:01:01"
+router_lan_mac: "52:54:00:74:01:02"
+
+router_lan_address: 192.168.74.1
+router_lan_netmask: 255.255.255.224
+
+router_public_key_file: ~/.ssh/ansible.pub

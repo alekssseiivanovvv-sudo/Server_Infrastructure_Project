@@ -1,0 +1,16 @@
+version: 1
+
+config:
+  - type: physical
+    name: eth0
+    mac_address: {{ router_wan_mac | to_json }}
+    subnets:
+      - type: dhcp4
+
+  - type: physical
+    name: eth1
+    mac_address: {{ router_lan_mac | to_json }}
+    subnets:
+      - type: static
+        address: {{ router_lan_address | to_json }}
+        netmask: {{ router_lan_netmask | to_json }}

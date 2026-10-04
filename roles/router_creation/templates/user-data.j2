@@ -1,0 +1,52 @@
+#cloud-config
+hostname: {{ router_hostname | to_json }}
+manage_etc_hosts: true
+
+users:
+  - name: {{ selected_admin_users[0].name | to_json }}
+    groups: [wheel]
+    shell: /bin/ash
+    lock_passwd: false
+    hashed_passwd: {{ selected_admin_users[0].password_hash | to_json }}
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    ssh_authorized_keys:
+      - {{ lookup('ansible.builtin.file', router_public_key_file) | trim | to_json }}
+
+disable_root: true
+ssh_pwauth: false
+
+growpart:
+  mode: auto
+  devices: ["/"]
+
+resize_rootfs: true
+
+write_files:
+  - path: /etc/apk/repositories
+    permissions: "0644"
+    content: |
+      https://dl-cdn.alpinelinux.org/alpine/v3.24/main
+      https://dl-cdn.alpinelinux.org/alpine/v3.24/community
+
+  - path: /root/tailscale-auth-key
+    permissions: "0600"
+    content: {{ vault_cloud_router_tailscale_auth_key | to_json }}
+
+package_update: true
+
+packages:
+  - openssh
+  - sudo
+  - python3
+  - tailscale
+  - tailscale-openrc
+
+runcmd:
+  - |
+      set -eu
+      rc-update add sshd default
+      rc-service sshd restart
+      rc-update add tailscale default
+      rc-service tailscale start
+      tailscale up --auth-key=file:/root/tailscale-auth-key --accept-dns=false --timeout=120s
+      rm -f /root/tailscale-auth-key
