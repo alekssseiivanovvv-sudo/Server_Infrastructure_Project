@@ -1,2 +1,19 @@
 ---
 management_host_ip: 192.168.76.1
+
+---
+management_host_ip: 192.168.76.1
+
+# Enable after host_2 is ready
+routers_creation_enabled: false
+
+# Paths on host_2 — fill in later
+router_image: ""
+router_storage_directory: ""
+
+hypervisor_routers:
+  - name: west_router
+    hostname: west-router
+    lan_address: 192.168.73.1
+    wan_mac: "52:54:00:73:01:01"
+    lan_mac: "52:54:00:73:01:02"

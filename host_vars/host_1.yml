@@ -1,3 +1,22 @@
 ---
 management_host_ip: 192.168.75.1
 ansible_become_exe: /usr/bin/sudo.ws
+
+# Paths on host_1
+routers_creation_enabled: true
+
+router_image: /mnt/a400/ISO/alpine-3.24.2-x86_64-cloudinit-r0.qcow2
+router_storage_directory: "/mnt/p5+/KVM"
+
+hypervisor_routers:
+  - name: cloud_router
+    hostname: cloud-router
+    lan_address: 192.168.74.1
+    wan_mac: "52:54:00:74:01:01"
+    lan_mac: "52:54:00:74:01:02"
+
+  - name: east_router
+    hostname: east-router
+    lan_address: 192.168.72.1
+    wan_mac: "52:54:00:72:01:01"
+    lan_mac: "52:54:00:72:01:02"

@@ -1,6 +1,6 @@
 ---
-- name: Create the first Alpine cloud router
-  hosts: host_1
+- name: Create Alpine routers on their hypervisors
+  hosts: hypervisor_hosts
   become: true
   gather_facts: false
 
@@ -15,5 +15,24 @@
         | list
       }}
 
-  roles:
-    - router_creation
+  tasks:
+    - name: Create routers assigned to this hypervisor
+      ansible.builtin.include_role:
+        name: router_creation
+      loop: "{{ hypervisor_routers | default([]) }}"
+      loop_control:
+        loop_var: router_spec
+        label: "{{ router_spec.name }}"
+      when: routers_creation_enabled | default(false) | bool
+      vars:
+        router_name: "{{ router_spec.name }}"
+        router_hostname: "{{ router_spec.hostname }}"
+        router_instance_id: "{{ router_spec.hostname }}-001"
+        router_lan_address: "{{ router_spec.lan_address }}"
+        router_wan_mac: "{{ router_spec.wan_mac }}"
+        router_lan_mac: "{{ router_spec.lan_mac }}"
+
+    - name: Explain skipped hypervisor
+      ansible.builtin.debug:
+        msg: Router creation is disabled for this host. Set its image and storage paths before enabling it.
+      when: not (routers_creation_enabled | default(false) | bool)
