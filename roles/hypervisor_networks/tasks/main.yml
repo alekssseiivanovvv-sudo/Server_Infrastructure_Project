@@ -16,17 +16,6 @@
         <bridge name='virbr-internal'/>
       </network>
 
-- name: Write management network definition
-  ansible.builtin.copy:
-    dest: /tmp/lab-management.xml
-    mode: '0644'
-    content: |
-      <network>
-        <name>management</name>
-        <bridge name='virbr-mgmt'/>
-        <ip address='{{ management_host_ip }}' prefix='27'/>
-      </network>
-
 - name: Create and enable internal network if missing
   ansible.builtin.shell: |
     set -eu
@@ -35,13 +24,4 @@
     virsh -c qemu:///system net-autostart internal
   args:
     creates: /etc/libvirt/qemu/networks/internal.xml
-
-- name: Create and enable management network if missing
-  ansible.builtin.shell: |
-    set -eu
-    virsh -c qemu:///system net-define /tmp/lab-management.xml
-    virsh -c qemu:///system net-start management
-    virsh -c qemu:///system net-autostart management
-  args:
-    creates: /etc/libvirt/qemu/networks/management.xml
 

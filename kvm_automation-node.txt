@@ -9,7 +9,6 @@ sudo virt-install \
   --os-variant ubuntu24.04 \
   --network network=default,model=virtio \
   --network network=internal,model=virtio \
-  --network network=management,model=virtio \
   --graphics spice \
   --video virtio \
   --channel spicevmc \

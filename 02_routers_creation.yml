@@ -1,6 +1,6 @@
 ---
-- name: Create Alpine routers on their hypervisors
-  hosts: hypervisor_hosts
+- name: Create Cloud router
+  hosts: host_1
   become: true
   gather_facts: false
 
@@ -8,31 +8,78 @@
     - group_vars/group/all/vault.yml
 
   vars:
-    selected_admin_users: >-
-      {{
-        vault_admin_users
-        | selectattr('name', 'equalto', 'ansible_admin')
-        | list
-      }}
+    router_name: cloud_router
+    router_hostname: cloud-router
+    router_instance_id: cloud-router-001
 
-  tasks:
-    - name: Create routers assigned to this hypervisor
-      ansible.builtin.include_role:
-        name: router_creation
-      loop: "{{ hypervisor_routers | default([]) }}"
-      loop_control:
-        loop_var: router_spec
-        label: "{{ router_spec.name }}"
-      when: routers_creation_enabled | default(false) | bool
-      vars:
-        router_name: "{{ router_spec.name }}"
-        router_hostname: "{{ router_spec.hostname }}"
-        router_instance_id: "{{ router_spec.hostname }}-001"
-        router_lan_address: "{{ router_spec.lan_address }}"
-        router_wan_mac: "{{ router_spec.wan_mac }}"
-        router_lan_mac: "{{ router_spec.lan_mac }}"
+    router_image: "/mnt/a400/ISO/alpine-3.24.2-x86_64-cloudinit-r0.qcow2"
+    router_directory: "/mnt/p5+/KVM/cloud_router"
+    router_disk: "/mnt/p5+/KVM/cloud_router/cloud_router.qcow2"
 
-    - name: Explain skipped hypervisor
-      ansible.builtin.debug:
-        msg: Router creation is disabled for this host. Set its image and storage paths before enabling it.
-      when: not (routers_creation_enabled | default(false) | bool)
+    router_lan_address: 192.168.74.1
+    router_wan_mac: "52:54:00:74:01:01"
+    router_lan_mac: "52:54:00:74:01:02"
+
+    selected_admin_users: "{{ vault_admin_users | selectattr('name', 'equalto', 'ansible_admin') | list }}"
+
+  roles:
+    - router_creation
+
+
+- name: Create East router
+  hosts: host_1
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    router_name: east_router
+    router_hostname: east-router
+    router_instance_id: east-router-001
+
+    router_image: "/mnt/a400/ISO/alpine-3.24.2-x86_64-cloudinit-r0.qcow2"
+    router_directory: "/mnt/p5+/KVM/east_router"
+    router_disk: "/mnt/p5+/KVM/east_router/east_router.qcow2"
+
+    router_lan_address: 192.168.72.1
+    router_wan_mac: "52:54:00:72:01:01"
+    router_lan_mac: "52:54:00:72:01:02"
+
+    selected_admin_users: "{{ vault_admin_users | selectattr('name', 'equalto', 'ansible_admin') | list }}"
+
+  roles:
+    - router_creation
+
+
+- name: Create West router
+  hosts: host_2
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    # Change to true after host_2 is ready.
+    create_west: false
+
+    router_name: west_router
+    router_hostname: west-router
+    router_instance_id: west-router-001
+
+    # Fill in paths on host_2 before enabling West.
+    router_image: ""
+    router_directory: ""
+    router_disk: ""
+
+    router_lan_address: 192.168.73.1
+    router_wan_mac: "52:54:00:73:01:01"
+    router_lan_mac: "52:54:00:73:01:02"
+
+    selected_admin_users: "{{ vault_admin_users | selectattr('name', 'equalto', 'ansible_admin') | list }}"
+
+  roles:
+    - role: router_creation
+      when: create_west | bool
