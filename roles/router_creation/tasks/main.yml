@@ -12,9 +12,15 @@
   register: router_domains
   changed_when: false
 
+
 - name: Create router if it does not exist
   when: router_name not in router_domains.stdout_lines
   block:
+    - name: Select ansible_admin from Vault
+      ansible.builtin.set_fact:
+        selected_admin_users: "{{ vault_admin_users | selectattr('name', 'equalto', 'ansible_admin') | list }}"
+      no_log: true
+
     - name: Check administrator selection
       ansible.builtin.assert:
         that:
