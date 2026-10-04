@@ -1,5 +1,6 @@
 # Server_Infrastructure_Project
 Repository for my distributed server infrastructure project.
+
 Contains:
 - Ansible
 - Ansible Vault (encrypted)
