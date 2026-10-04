@@ -9,13 +9,14 @@
 
   vars:
     vm_name: east_web
+    vm_os: alpine
     vm_ip: 192.168.72.2
     vm_gateway: 192.168.72.1
-    vm_memory: 4096
+    vm_memory: 3072
     vm_cpus: 2
     vm_disk_size: 20G
     vm_mac: "52:54:00:72:02:01"
-    vm_image: "/mnt/a400/ISO/ubuntu-26.04-server-cloudimg-amd64.img"
+    vm_image: "/mnt/a400/ISO/alpine-3.24.2-x86_64-cloudinit-r0.qcow2"
     vm_directory: "/mnt/p5+/KVM/east_web"
 
   roles:
@@ -32,6 +33,7 @@
 
   vars:
     vm_name: east_db
+    vm_os: ubuntu
     vm_ip: 192.168.72.3
     vm_gateway: 192.168.72.1
     vm_memory: 4096
@@ -55,6 +57,7 @@
 
   vars:
     vm_name: east_storage
+    vm_os: ubuntu
     vm_ip: 192.168.72.4
     vm_gateway: 192.168.72.1
     vm_memory: 4096
@@ -78,13 +81,14 @@
 
   vars:
     vm_name: load_balancer
+    vm_os: alpine
     vm_ip: 192.168.74.4
     vm_gateway: 192.168.74.1
     vm_memory: 2048
     vm_cpus: 1
     vm_disk_size: 10G
     vm_mac: "52:54:00:74:04:01"
-    vm_image: "/mnt/a400/ISO/ubuntu-26.04-server-cloudimg-amd64.img"
+    vm_image: "/mnt/a400/ISO/alpine-3.24.2-x86_64-cloudinit-r0.qcow2"
     vm_directory: "/mnt/p5+/KVM/load_balancer"
 
   roles:
@@ -101,6 +105,7 @@
 
   vars:
     vm_name: monitoring
+    vm_os: ubuntu
     vm_ip: 192.168.74.3
     vm_gateway: 192.168.74.1
     vm_memory: 6144
@@ -124,16 +129,14 @@
 
   vars:
     create_west: false
-
     vm_name: west_web
+    vm_os: alpine
     vm_ip: 192.168.73.2
     vm_gateway: 192.168.73.1
-    vm_memory: 4096
+    vm_memory: 3072
     vm_cpus: 2
     vm_disk_size: 20G
     vm_mac: "52:54:00:73:02:01"
-
-    #host_2.
     vm_image: ""
     vm_directory: ""
 
@@ -152,15 +155,14 @@
 
   vars:
     create_west: false
-
     vm_name: west_db
+    vm_os: ubuntu
     vm_ip: 192.168.73.3
     vm_gateway: 192.168.73.1
     vm_memory: 4096
     vm_cpus: 2
     vm_disk_size: 30G
     vm_mac: "52:54:00:73:03:01"
-
     vm_image: ""
     vm_directory: ""
 
@@ -179,15 +181,14 @@
 
   vars:
     create_west: false
-
     vm_name: west_storage
+    vm_os: ubuntu
     vm_ip: 192.168.73.4
     vm_gateway: 192.168.73.1
     vm_memory: 4096
     vm_cpus: 2
     vm_disk_size: 20G
     vm_mac: "52:54:00:73:04:01"
-
     vm_image: ""
     vm_directory: ""
 
