@@ -42,7 +42,7 @@
         group: root
         mode: "0700"
 
-    - name: Generate cloud-init files
+    - name: Generate common cloud-init files
       ansible.builtin.template:
         src: "{{ item }}.j2"
         dest: "{{ vm_directory }}/cloud-init/{{ item }}"
@@ -50,13 +50,22 @@
         group: root
         mode: "0600"
       loop:
-        - user-data
         - meta-data
         - network-config
       no_log: true
       diff: false
 
-    - name: Copy Ubuntu cloud image
+    - name: Generate OS-specific user-data
+      ansible.builtin.template:
+        src: "user-data-{{ vm_os }}.j2"
+        dest: "{{ vm_directory }}/cloud-init/user-data"
+        owner: root
+        group: root
+        mode: "0600"
+      no_log: true
+      diff: false
+
+    - name: Copy OS cloud image
       ansible.builtin.command:
         argv:
           - qemu-img
