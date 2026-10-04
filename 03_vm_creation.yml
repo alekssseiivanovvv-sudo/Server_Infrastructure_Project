@@ -133,7 +133,7 @@
     vm_disk_size: 20G
     vm_mac: "52:54:00:73:02:01"
 
-    # Заполни после подготовки host_2.
+    #host_2.
     vm_image: ""
     vm_directory: ""
 
