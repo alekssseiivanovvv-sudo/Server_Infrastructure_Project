@@ -53,6 +53,9 @@ fs_servers
 balance_servers
 monitoring_servers
 
+[linux_servers:vars]
+ansible_port={{ vault_ssh_port }}
+
 [hypervisor_hosts]
 host_1 ansible_host=100.64.0.10
 host_2 ansible_host=100.64.0.11
