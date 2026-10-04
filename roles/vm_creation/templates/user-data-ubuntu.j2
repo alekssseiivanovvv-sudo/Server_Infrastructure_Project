@@ -34,6 +34,7 @@ write_files:
     owner: root:root
     permissions: "0644"
     content: |
+      Port {{ vault_ssh_port }}
       PermitRootLogin no
       PasswordAuthentication no
       KbdInteractiveAuthentication no
