@@ -2,7 +2,7 @@
 - name: Create administrator accounts
   hosts: linux_servers
   become: true
-  gather_facts: false
+  gather_facts: true
 
   vars_files:
     - group_vars/group/all/vault.yml
@@ -13,9 +13,8 @@
         name: "{{ item.name }}"
         password: "{{ item.password_hash }}"
         update_password: always
-        shell: /bin/bash
-        groups:
-          - sudo
+        shell: "{{ '/bin/ash' if ansible_facts.distribution == 'Alpine' else '/bin/bash' }}"
+        groups: "{{ ['wheel'] if ansible_facts.distribution == 'Alpine' else ['sudo'] }}"
         append: true
         create_home: true
         state: present
