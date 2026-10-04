@@ -2,3 +2,6 @@
 
 # Enable after host_2 is ready
 routers_creation_enabled: false
+
+vm_image: ""
+vm_storage_directory: ""
