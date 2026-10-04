@@ -1,5 +1,4 @@
 ---
-management_host_ip: 192.168.76.1
 
 # Enable after host_2 is ready
 routers_creation_enabled: false
