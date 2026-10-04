@@ -1,10 +1,18 @@
 ---
 - name: List existing VMs
-  ansible.builtin.command: virsh -c qemu:///system list --all --name
+  ansible.builtin.command:
+    argv:
+      - virsh
+      - -c
+      - qemu:///system
+      - list
+      - --all
+      - --name
   register: existing_vms
   changed_when: false
 
-- name: Create VM if missing
+
+- name: Create VM if it does not exist
   when: vm_name not in existing_vms.stdout_lines
   block:
     - name: Select ansible_admin from Vault
@@ -16,10 +24,11 @@
       ansible.builtin.assert:
         that:
           - selected_admin_users | length == 1
+        fail_msg: Vault must contain exactly one ansible_admin account.
 
     - name: Create VM directory
       ansible.builtin.file:
-        path: "{{ vm_storage_directory }}/{{ vm_name }}"
+        path: "{{ vm_directory }}"
         state: directory
         owner: root
         group: kvm
@@ -27,7 +36,7 @@
 
     - name: Create private cloud-init directory
       ansible.builtin.file:
-        path: "/mnt/p5+/KVM/{{ vm_name }}/cloud-init"
+        path: "{{ vm_directory }}/cloud-init"
         state: directory
         owner: root
         group: root
@@ -36,68 +45,84 @@
     - name: Generate cloud-init files
       ansible.builtin.template:
         src: "{{ item }}.j2"
-        dest: "/mnt/p5+/KVM/{{ vm_name }}/cloud-init/{{ item }}"
+        dest: "{{ vm_directory }}/cloud-init/{{ item }}"
         owner: root
         group: root
         mode: "0600"
-      loop: [user-data, meta-data, network-config]
+      loop:
+        - user-data
+        - meta-data
+        - network-config
       no_log: true
       diff: false
 
     - name: Copy Ubuntu cloud image
-      ansible.builtin.shell: |
-        set -eu
-        qemu-img convert -f qcow2 -O qcow2 \
-          {{ vm_image | quote }} \
-          "{{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}.qcow2.partial"
-        mv "{{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}.qcow2.partial" \
-           "{{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}.qcow2"
-      args:
-        creates: "{{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}.qcow2"
+      ansible.builtin.command:
+        argv:
+          - qemu-img
+          - convert
+          - -f
+          - qcow2
+          - -O
+          - qcow2
+          - "{{ vm_image }}"
+          - "{{ vm_directory }}/{{ vm_name }}.qcow2"
+        creates: "{{ vm_directory }}/{{ vm_name }}.qcow2"
 
     - name: Resize system disk
-      ansible.builtin.command: >-
-        qemu-img resize
-        {{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}/{{ vm_name }}.qcow2
-        {{ vm_disk_size }}
+      ansible.builtin.command:
+        argv:
+          - qemu-img
+          - resize
+          - "{{ vm_directory }}/{{ vm_name }}.qcow2"
+          - "{{ vm_disk_size | string }}"
 
     - name: Set system disk permissions
       ansible.builtin.file:
-        path: "{{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}/{{ vm_name }}.qcow2"
+        path: "{{ vm_directory }}/{{ vm_name }}.qcow2"
         owner: libvirt-qemu
         group: kvm
         mode: "0600"
 
-    - name: Create two empty Storage disks
-      ansible.builtin.command: >-
-        qemu-img create -f qcow2
-        "{{ vm_storage_directory }}/{{ vm_name }}/{{ item }}.qcow2" 30G
-      args:
-        creates: "{{ vm_storage_directory }}/{{ vm_name }}/{{ item }}.qcow2"
-      loop: [data1, data2]
+    - name: Create empty Storage disks
+      ansible.builtin.command:
+        argv:
+          - qemu-img
+          - create
+          - -f
+          - qcow2
+          - "{{ vm_directory }}/{{ item }}.qcow2"
+          - 30G
+        creates: "{{ vm_directory }}/{{ item }}.qcow2"
+      loop:
+        - data1
+        - data2
       when: vm_name in ['east_storage', 'west_storage']
 
     - name: Set Storage disk permissions
       ansible.builtin.file:
-        path: "{{ vm_storage_directory }}/{{ vm_name }}/{{ item }}.qcow2"
+        path: "{{ vm_directory }}/{{ item }}.qcow2"
         owner: libvirt-qemu
         group: kvm
         mode: "0600"
-      loop: [data1, data2]
+      loop:
+        - data1
+        - data2
       when: vm_name in ['east_storage', 'west_storage']
 
     - name: Create cloud-init seed
-      ansible.builtin.command: >-
-        cloud-localds
-        --network-config={{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}/cloud-init/network-config
-        {{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}/seed.iso
-        {{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}/cloud-init/user-data
-        {{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}/cloud-init/meta-data
+      ansible.builtin.command:
+        argv:
+          - cloud-localds
+          - "--network-config={{ vm_directory }}/cloud-init/network-config"
+          - "{{ vm_directory }}/seed.iso"
+          - "{{ vm_directory }}/cloud-init/user-data"
+          - "{{ vm_directory }}/cloud-init/meta-data"
       no_log: true
 
     - name: Set seed permissions
       ansible.builtin.file:
-        path: "{{ vm_storage_directory }}/{{ vm_name }}/seed.iso"
+        path: "{{ vm_directory }}/seed.iso"
         owner: root
         group: kvm
         mode: "0640"
@@ -112,11 +137,11 @@
         --osinfo generic
         --import
         --boot hd
-        --disk path=/mnt/p5+/KVM/{{ vm_name }}/{{ vm_name }}.qcow2,format=qcow2,bus=virtio
-        --disk path=/mnt/p5+/KVM/{{ vm_name }}/seed.iso,format=raw,device=cdrom
-        {% if vm_name == 'east_storage' %}
-        --disk path=/mnt/p5+/KVM/east_storage/data1.qcow2,format=qcow2,bus=virtio,serial=data1
-        --disk path=/mnt/p5+/KVM/east_storage/data2.qcow2,format=qcow2,bus=virtio,serial=data2
+        --disk path={{ vm_directory }}/{{ vm_name }}.qcow2,format=qcow2,bus=virtio
+        --disk path={{ vm_directory }}/seed.iso,format=raw,device=cdrom
+        {% if vm_name in ['east_storage', 'west_storage'] %}
+        --disk path={{ vm_directory }}/data1.qcow2,format=qcow2,bus=virtio,serial=data1
+        --disk path={{ vm_directory }}/data2.qcow2,format=qcow2,bus=virtio,serial=data2
         {% endif %}
         --network network=internal,model=virtio,mac={{ vm_mac }}
         --graphics none
