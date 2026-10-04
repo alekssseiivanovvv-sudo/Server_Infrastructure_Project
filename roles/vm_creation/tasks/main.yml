@@ -1,0 +1,125 @@
+---
+- name: List existing VMs
+  ansible.builtin.command: virsh -c qemu:///system list --all --name
+  register: existing_vms
+  changed_when: false
+
+- name: Create VM if missing
+  when: vm_name not in existing_vms.stdout_lines
+  block:
+    - name: Select ansible_admin from Vault
+      ansible.builtin.set_fact:
+        selected_admin_users: "{{ vault_admin_users | selectattr('name', 'equalto', 'ansible_admin') | list }}"
+      no_log: true
+
+    - name: Check administrator selection
+      ansible.builtin.assert:
+        that:
+          - selected_admin_users | length == 1
+
+    - name: Create VM directory
+      ansible.builtin.file:
+        path: "/mnt/p5+/KVM/{{ vm_name }}"
+        state: directory
+        owner: root
+        group: kvm
+        mode: "0750"
+
+    - name: Create private cloud-init directory
+      ansible.builtin.file:
+        path: "/mnt/p5+/KVM/{{ vm_name }}/cloud-init"
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Generate cloud-init files
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "/mnt/p5+/KVM/{{ vm_name }}/cloud-init/{{ item }}"
+        owner: root
+        group: root
+        mode: "0600"
+      loop: [user-data, meta-data, network-config]
+      no_log: true
+      diff: false
+
+    - name: Copy Ubuntu cloud image
+      ansible.builtin.shell: |
+        set -eu
+        qemu-img convert -f qcow2 -O qcow2 \
+          /mnt/a400/ISO/ubuntu-26.04-server-cloudimg-amd64.img \
+          /mnt/p5+/KVM/{{ vm_name }}/{{ vm_name }}.qcow2.partial
+        mv /mnt/p5+/KVM/{{ vm_name }}/{{ vm_name }}.qcow2.partial \
+           /mnt/p5+/KVM/{{ vm_name }}/{{ vm_name }}.qcow2
+      args:
+        creates: "/mnt/p5+/KVM/{{ vm_name }}/{{ vm_name }}.qcow2"
+
+    - name: Resize system disk
+      ansible.builtin.command: >-
+        qemu-img resize
+        /mnt/p5+/KVM/{{ vm_name }}/{{ vm_name }}.qcow2
+        {{ vm_disk_size }}
+
+    - name: Set system disk permissions
+      ansible.builtin.file:
+        path: "/mnt/p5+/KVM/{{ vm_name }}/{{ vm_name }}.qcow2"
+        owner: libvirt-qemu
+        group: kvm
+        mode: "0600"
+
+    - name: Create two empty Storage disks
+      ansible.builtin.command: >-
+        qemu-img create -f qcow2
+        /mnt/p5+/KVM/east_storage/{{ item }}.qcow2 30G
+      args:
+        creates: "/mnt/p5+/KVM/east_storage/{{ item }}.qcow2"
+      loop: [data1, data2]
+      when: vm_name == 'east_storage'
+
+    - name: Set Storage disk permissions
+      ansible.builtin.file:
+        path: "/mnt/p5+/KVM/east_storage/{{ item }}.qcow2"
+        owner: libvirt-qemu
+        group: kvm
+        mode: "0600"
+      loop: [data1, data2]
+      when: vm_name == 'east_storage'
+
+    - name: Create cloud-init seed
+      ansible.builtin.command: >-
+        cloud-localds
+        --network-config=/mnt/p5+/KVM/{{ vm_name }}/cloud-init/network-config
+        /mnt/p5+/KVM/{{ vm_name }}/seed.iso
+        /mnt/p5+/KVM/{{ vm_name }}/cloud-init/user-data
+        /mnt/p5+/KVM/{{ vm_name }}/cloud-init/meta-data
+      no_log: true
+
+    - name: Set seed permissions
+      ansible.builtin.file:
+        path: "/mnt/p5+/KVM/{{ vm_name }}/seed.iso"
+        owner: root
+        group: kvm
+        mode: "0640"
+
+    - name: Create and start VM
+      ansible.builtin.command: >-
+        virt-install
+        --connect qemu:///system
+        --name {{ vm_name }}
+        --memory {{ vm_memory }}
+        --vcpus {{ vm_cpus }}
+        --osinfo generic
+        --import
+        --boot hd
+        --disk path=/mnt/p5+/KVM/{{ vm_name }}/{{ vm_name }}.qcow2,format=qcow2,bus=virtio
+        --disk path=/mnt/p5+/KVM/{{ vm_name }}/seed.iso,format=raw,device=cdrom
+        {% if vm_name == 'east_storage' %}
+        --disk path=/mnt/p5+/KVM/east_storage/data1.qcow2,format=qcow2,bus=virtio,serial=data1
+        --disk path=/mnt/p5+/KVM/east_storage/data2.qcow2,format=qcow2,bus=virtio,serial=data2
+        {% endif %}
+        --network network=internal,model=virtio,mac={{ vm_mac }}
+        --graphics none
+        --console pty,target_type=serial
+        --noautoconsole
+        --autostart

@@ -109,7 +109,7 @@
         group: kvm
         mode: "0640"
 
-- name: Create and start router VM
+    - name: Create and start router VM
       ansible.builtin.command: >-
         virt-install
         --connect qemu:///system

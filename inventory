@@ -11,15 +11,15 @@ east_storage ansible_host=192.168.72.4
 west_storage ansible_host=192.168.73.4
 
 [balance_servers]
-load_balancer ansible_host=192.168.74.2
+load_balancer ansible_host=192.168.74.4
 
 [monitoring_servers]
 monitoring ansible_host=192.168.74.3
 
 [routers]
-east_router ansible_host=192.168.72.1
-west_router ansible_host=192.168.73.1
-cloud_router ansible_host=192.168.74.1
+east_router ansible_host=100.64.0.2  lan_subnet=192.168.72.1/27
+west_router ansible_host=100.64.0.3 lan_subnet=192.168.73.1/27
+cloud_router ansible_host=100.64.0.1 lan_subnet=192.168.74.1/27
 
 [east]
 east_router

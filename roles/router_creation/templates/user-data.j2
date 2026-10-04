@@ -32,21 +32,138 @@ write_files:
     permissions: "0600"
     content: {{ vault_cloud_router_tailscale_auth_key | to_json }}
 
+  - path: /etc/sysctl.d/99-router.conf
+    permissions: "0644"
+    content: |
+      net.ipv4.ip_forward = 1
+
+  - path: /etc/ssh/sshd_config
+    permissions: "0600"
+    content: |
+      Port {{ vault_router_ssh_port }}
+      ListenAddress 127.0.0.1
+      PermitRootLogin no
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PubkeyAuthentication yes
+      AuthorizedKeysFile .ssh/authorized_keys
+      AllowUsers ansible_admin
+      Subsystem sftp internal-sftp
+
+  - path: /etc/conf.d/sshd
+    append: true
+    defer: true
+    permissions: "0644"
+    content: |
+
+      rc_need="nftables"
+
+  - path: /etc/nftables.nft
+    defer: true
+    permissions: "0600"
+    content: |
+      add table inet lab_router
+      flush table inet lab_router
+
+      table inet lab_router {
+        chain input {
+          type filter hook input priority 0; policy drop;
+
+          # Запретить SSH через любой интерфейс, кроме VPN.
+          iifname != "tailscale0" tcp dport { 22, {{ vault_router_ssh_port }} } drop
+
+          ct state invalid drop
+          ct state established,related accept
+          iifname "lo" accept
+
+          # SSH через Tailscale.
+          iifname "tailscale0" tcp dport {{ vault_router_ssh_port }} accept
+
+          # Получение WAN-адреса через DHCP.
+          iifname "eth0" udp sport 67 udp dport 68 accept
+
+          # Прямые соединения Tailscale.
+          iifname "eth0" udp dport 41641 accept
+
+          # ICMP для диагностики и работы сети.
+          meta l4proto { icmp, ipv6-icmp } accept
+        }
+
+        chain mangle_forward {
+          type filter hook forward priority mangle; policy accept;
+
+          # Подстроить размер TCP-пакетов под VPN.
+          oifname "tailscale0" tcp flags syn tcp option maxseg size set rt mtu
+        }
+
+        chain forward {
+          type filter hook forward priority 0; policy drop;
+
+          ct state invalid drop
+          ct state established,related accept
+
+          # LAN → интернет.
+          iifname "eth1" oifname "eth0" ip saddr {{ router_lan_subnet }} accept
+
+          # LAN → другие филиалы через VPN.
+          iifname "eth1" oifname "tailscale0" ip saddr {{ router_lan_subnet }} accept
+
+          # VPN → собственная LAN.
+          iifname "tailscale0" oifname "eth1" ip daddr {{ router_lan_subnet }} accept
+        }
+
+        chain postrouting {
+          type nat hook postrouting priority srcnat; policy accept;
+
+          # NAT только при выходе в интернет.
+          oifname "eth0" ip saddr {{ router_lan_subnet }} masquerade
+        }
+      }
+
 package_update: true
 
 packages:
   - openssh
   - sudo
   - python3
+  - nftables
+  - nftables-openrc
   - tailscale
   - tailscale-openrc
 
 runcmd:
   - |
       set -eu
-      rc-update add sshd default
-      rc-service sshd restart
+
+      # Включить маршрутизацию.
+      rc-update add sysctl boot
+      sysctl -p /etc/sysctl.d/99-router.conf
+
+      # Проверить и включить firewall.
+      nft -c -f /etc/nftables.nft
+      rc-update add nftables boot
+      rc-service nftables start
+
+      # Подключиться к VPN и объявить свою LAN.
       rc-update add tailscale default
       rc-service tailscale start
-      tailscale up --auth-key=file:/root/tailscale-auth-key --accept-dns=false --timeout=120s
+
+      tailscale up \
+        --auth-key=file:/root/tailscale-auth-key \
+        --advertise-routes={{ router_lan_subnet }} \
+        --accept-routes=true \
+        --snat-subnet-routes=false \
+        --accept-dns=false \
+        --netfilter-mode=on \
+        --ssh=false \
+        --timeout=120s
+
       rm -f /root/tailscale-auth-key
+
+      # После настройки firewall разрешить SSH слушать внешние адреса.
+      sed -i '/^ListenAddress 127\.0\.0\.1$/d' /etc/ssh/sshd_config
+
+      ssh-keygen -A
+      sshd -t
+      rc-update add sshd default
+      rc-service sshd restart

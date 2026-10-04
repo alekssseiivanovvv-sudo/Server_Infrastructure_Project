@@ -1,0 +1,104 @@
+---
+- name: Create east_web
+  hosts: host_1
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    vm_name: east_web
+    vm_ip: 192.168.72.2
+    vm_gateway: 192.168.72.1
+    vm_memory: 4096
+    vm_cpus: 2
+    vm_disk_size: 20G
+    vm_mac: "52:54:00:72:02:01"
+
+  roles:
+    - vm_creation
+
+
+- name: Create east_db
+  hosts: host_1
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    vm_name: east_db
+    vm_ip: 192.168.72.3
+    vm_gateway: 192.168.72.1
+    vm_memory: 4096
+    vm_cpus: 2
+    vm_disk_size: 30G
+    vm_mac: "52:54:00:72:03:01"
+
+  roles:
+    - vm_creation
+
+
+- name: Create east_storage
+  hosts: host_1
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    vm_name: east_storage
+    vm_ip: 192.168.72.4
+    vm_gateway: 192.168.72.1
+    vm_memory: 4096
+    vm_cpus: 2
+    vm_disk_size: 20G
+    vm_mac: "52:54:00:72:04:01"
+
+  roles:
+    - vm_creation
+
+
+- name: Create load_balancer
+  hosts: host_1
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    vm_name: load_balancer
+    vm_ip: 192.168.74.4
+    vm_gateway: 192.168.74.1
+    vm_memory: 2048
+    vm_cpus: 1
+    vm_disk_size: 10G
+    vm_mac: "52:54:00:74:04:01"
+
+  roles:
+    - vm_creation
+
+
+- name: Create monitoring
+  hosts: host_1
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    vm_name: monitoring
+    vm_ip: 192.168.74.3
+    vm_gateway: 192.168.74.1
+    vm_memory: 6144
+    vm_cpus: 2
+    vm_disk_size: 40G
+    vm_mac: "52:54:00:74:03:01"
+
+  roles:
+    - vm_creation
