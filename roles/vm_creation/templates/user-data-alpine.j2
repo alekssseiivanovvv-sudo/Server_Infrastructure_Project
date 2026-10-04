@@ -31,7 +31,7 @@ write_files:
   - path: /etc/ssh/sshd_config
     permissions: "0600"
     content: |
-      Port 22
+      Port {{ vault_ssh_port }}
       PermitRootLogin no
       PasswordAuthentication no
       KbdInteractiveAuthentication no
