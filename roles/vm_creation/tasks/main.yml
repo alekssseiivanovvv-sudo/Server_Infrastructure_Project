@@ -19,7 +19,7 @@
 
     - name: Create VM directory
       ansible.builtin.file:
-        path: "/mnt/p5+/KVM/{{ vm_name }}"
+        path: "{{ vm_storage_directory }}/{{ vm_name }}"
         state: directory
         owner: root
         group: kvm
@@ -48,22 +48,22 @@
       ansible.builtin.shell: |
         set -eu
         qemu-img convert -f qcow2 -O qcow2 \
-          /mnt/a400/ISO/ubuntu-26.04-server-cloudimg-amd64.img \
-          /mnt/p5+/KVM/{{ vm_name }}/{{ vm_name }}.qcow2.partial
-        mv /mnt/p5+/KVM/{{ vm_name }}/{{ vm_name }}.qcow2.partial \
-           /mnt/p5+/KVM/{{ vm_name }}/{{ vm_name }}.qcow2
+          {{ vm_image | quote }} \
+          "{{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}.qcow2.partial"
+        mv "{{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}.qcow2.partial" \
+           "{{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}.qcow2"
       args:
-        creates: "/mnt/p5+/KVM/{{ vm_name }}/{{ vm_name }}.qcow2"
+        creates: "{{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}.qcow2"
 
     - name: Resize system disk
       ansible.builtin.command: >-
         qemu-img resize
-        /mnt/p5+/KVM/{{ vm_name }}/{{ vm_name }}.qcow2
+        {{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}/{{ vm_name }}.qcow2
         {{ vm_disk_size }}
 
     - name: Set system disk permissions
       ansible.builtin.file:
-        path: "/mnt/p5+/KVM/{{ vm_name }}/{{ vm_name }}.qcow2"
+        path: "{{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}/{{ vm_name }}.qcow2"
         owner: libvirt-qemu
         group: kvm
         mode: "0600"
@@ -71,33 +71,33 @@
     - name: Create two empty Storage disks
       ansible.builtin.command: >-
         qemu-img create -f qcow2
-        /mnt/p5+/KVM/east_storage/{{ item }}.qcow2 30G
+        "{{ vm_storage_directory }}/{{ vm_name }}/{{ item }}.qcow2" 30G
       args:
-        creates: "/mnt/p5+/KVM/east_storage/{{ item }}.qcow2"
+        creates: "{{ vm_storage_directory }}/{{ vm_name }}/{{ item }}.qcow2"
       loop: [data1, data2]
-      when: vm_name == 'east_storage'
+      when: vm_name in ['east_storage', 'west_storage']
 
     - name: Set Storage disk permissions
       ansible.builtin.file:
-        path: "/mnt/p5+/KVM/east_storage/{{ item }}.qcow2"
+        path: "{{ vm_storage_directory }}/{{ vm_name }}/{{ item }}.qcow2"
         owner: libvirt-qemu
         group: kvm
         mode: "0600"
       loop: [data1, data2]
-      when: vm_name == 'east_storage'
+      when: vm_name in ['east_storage', 'west_storage']
 
     - name: Create cloud-init seed
       ansible.builtin.command: >-
         cloud-localds
-        --network-config=/mnt/p5+/KVM/{{ vm_name }}/cloud-init/network-config
-        /mnt/p5+/KVM/{{ vm_name }}/seed.iso
-        /mnt/p5+/KVM/{{ vm_name }}/cloud-init/user-data
-        /mnt/p5+/KVM/{{ vm_name }}/cloud-init/meta-data
+        --network-config={{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}/cloud-init/network-config
+        {{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}/seed.iso
+        {{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}/cloud-init/user-data
+        {{ vm_storage_directory }}/{{ vm_name }}/{{ vm_name }}/cloud-init/meta-data
       no_log: true
 
     - name: Set seed permissions
       ansible.builtin.file:
-        path: "/mnt/p5+/KVM/{{ vm_name }}/seed.iso"
+        path: "{{ vm_storage_directory }}/{{ vm_name }}/seed.iso"
         owner: root
         group: kvm
         mode: "0640"
