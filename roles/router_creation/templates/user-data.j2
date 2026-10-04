@@ -40,7 +40,7 @@ write_files:
   - path: /etc/ssh/sshd_config
     permissions: "0600"
     content: |
-      Port {{ vault_router_ssh_port }}
+      Port {{ vault_ssh_port }}
       ListenAddress 127.0.0.1
       PermitRootLogin no
       PasswordAuthentication no
@@ -70,14 +70,14 @@ write_files:
           type filter hook input priority 0; policy drop;
 
           # Запретить SSH через любой интерфейс, кроме VPN.
-          iifname != "tailscale0" tcp dport { 22, {{ vault_router_ssh_port }} } drop
+          iifname != "tailscale0" tcp dport { 22, {{ vault_ssh_port }} } drop
 
           ct state invalid drop
           ct state established,related accept
           iifname "lo" accept
 
           # SSH через Tailscale.
-          iifname "tailscale0" tcp dport {{ vault_router_ssh_port }} accept
+          iifname "tailscale0" tcp dport {{ vault_ssh_port }} accept
 
           # Получение WAN-адреса через DHCP.
           iifname "eth0" udp sport 67 udp dport 68 accept
