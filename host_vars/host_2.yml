@@ -1,5 +1,7 @@
 ---
 ansible_become_exe: /usr/bin/sudo.ws
+
+hardware_admin_user: admin_ilja
 # Enable after host_2 is ready
 routers_creation_enabled: true
 
