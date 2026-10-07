@@ -61,16 +61,16 @@
 
   vars:
 
-    create_west: false
+    create_west: true
 
     router_name: west_router
     router_hostname: west-router
     router_instance_id: west-router-001
 
     # Пути пока неизвестны.
-    router_image: ""
-    router_directory: ""
-    router_disk: ""
+    router_image: "/mnt/disk/ISO/alpine-3.24.2-x86_64-cloudinit-r0.qcow2"
+    router_directory: "/mnt/disk/VM/west_router"
+    router_disk: "/mnt/disk/ISO/VM/west_router/west_router.qcow2"
 
     router_lan_address: 192.168.73.1
     router_lan_subnet: 192.168.73.0/27

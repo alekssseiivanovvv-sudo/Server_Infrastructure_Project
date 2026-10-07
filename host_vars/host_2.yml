@@ -1,7 +1,11 @@
 ---
-
+ansible_become_exe: /usr/bin/sudo.ws
 # Enable after host_2 is ready
-routers_creation_enabled: false
+routers_creation_enabled: true
 
-vm_image: ""
-vm_storage_directory: ""
+router_image: "/mnt/disk/ISO/alpine-3.24.2-x86_64-cloudinit-r0.qcow2"
+router_directory: "/mnt/disk/VM/west_router"
+router_disk: "/mnt/disk/ISO/VM/west_router/west_router.qcow2"
+
+vm_image: "/mnt/disk/VM/"
+vm_storage_directory: "/mnt/disk/ISO/"

@@ -11,7 +11,7 @@
     create_home: true
     state: present
   loop: "{{ selected_admin_users }}"
-  no_log: true
+  no_log: false
 
 - name: Add SSH key for ansible_admin
   ansible.posix.authorized_key:

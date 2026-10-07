@@ -3,7 +3,7 @@
 ansible_python_interpreter: /usr/bin/python3
 
 libvirt_packages:
-  - qemu-kvm
+  - qemu-system-x86
   - libvirt-daemon-system
   - libvirt-clients
   - libvirt-daemon-config-network
