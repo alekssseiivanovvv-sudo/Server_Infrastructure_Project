@@ -128,7 +128,7 @@
     - group_vars/group/all/vault.yml
 
   vars:
-    create_west: false
+    create_west: true
     vm_name: west_web
     vm_os: alpine
     vm_ip: 192.168.73.2
@@ -137,8 +137,8 @@
     vm_cpus: 2
     vm_disk_size: 20G
     vm_mac: "52:54:00:73:02:01"
-    vm_image: ""
-    vm_directory: ""
+    vm_image: "/mnt/disk/ISO/alpine-3.24.2-x86_64-cloudinit-r0.qcow2"
+    vm_directory: "/mnt/disk/VM/west_web"
 
   roles:
     - role: vm_creation
@@ -154,7 +154,7 @@
     - group_vars/group/all/vault.yml
 
   vars:
-    create_west: false
+    create_west: true
     vm_name: west_db
     vm_os: ubuntu
     vm_ip: 192.168.73.3
@@ -163,8 +163,8 @@
     vm_cpus: 2
     vm_disk_size: 30G
     vm_mac: "52:54:00:73:03:01"
-    vm_image: ""
-    vm_directory: ""
+    vm_image: "/mnt/disk/ISO/ubuntu-26.04-server-cloudimg-amd64.img"
+    vm_directory: "/mnt/disk/west_db"
 
   roles:
     - role: vm_creation
@@ -180,7 +180,7 @@
     - group_vars/group/all/vault.yml
 
   vars:
-    create_west: false
+    create_west: true
     vm_name: west_storage
     vm_os: ubuntu
     vm_ip: 192.168.73.4
@@ -189,8 +189,8 @@
     vm_cpus: 2
     vm_disk_size: 20G
     vm_mac: "52:54:00:73:04:01"
-    vm_image: ""
-    vm_directory: ""
+    vm_image: "/mnt/disk/ISO/ubuntu-26.04-server-cloudimg-amd64.img"
+    vm_directory: "/mnt/disk/west_storage"
 
   roles:
     - role: vm_creation
