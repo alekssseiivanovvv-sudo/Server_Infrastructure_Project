@@ -1,6 +1,7 @@
 ---
-- name: Create administrator accounts
-  hosts: linux_servers
+
+- name: Create local administrator on hypervisor hosts
+  hosts: hypervisor_hosts
   become: true
   gather_facts: true
 
@@ -8,7 +9,133 @@
     - group_vars/group/all/vault.yml
 
   tasks:
-    - name: Create users with sudo access
+    - name: Select local administrator from Vault
+      ansible.builtin.set_fact:
+        selected_hardware_admin: >-
+          {{
+            vault_admin_users
+            | selectattr('name', 'equalto', hardware_admin_user)
+            | list
+            | first
+          }}
+      no_log: true
+
+    - name: Check local administrator configuration
+      ansible.builtin.assert:
+        that:
+          - hardware_admin_user is defined
+          - selected_hardware_admin is defined
+          - selected_hardware_admin.name == hardware_admin_user
+
+    - name: Create local administrator
+      ansible.builtin.user:
+        name: "{{ selected_hardware_admin.name }}"
+        password: "{{ selected_hardware_admin.password_hash }}"
+        update_password: always
+        shell: "{{ '/bin/ash' if ansible_facts.distribution == 'Alpine' else '/bin/bash' }}"
+        groups: "{{ ['wheel'] if ansible_facts.distribution == 'Alpine' else ['sudo'] }}"
+        append: true
+        create_home: true
+        state: present
+      no_log: true
+
+    - name: Create local administrator SSH directory
+      ansible.builtin.file:
+        path: "/home/{{ hardware_admin_user }}/.ssh"
+        state: directory
+        owner: "{{ hardware_admin_user }}"
+        group: "{{ hardware_admin_user }}"
+        mode: "0700"
+
+    - name: Generate administrator SSH key on the hypervisor
+      ansible.builtin.command:
+        argv:
+          - ssh-keygen
+          - -q
+          - -t
+          - ed25519
+          - -f
+          - "/home/{{ hardware_admin_user }}/.ssh/id_ed25519"
+          - -N
+          - ""
+          - -C
+          - "{{ hardware_admin_user }}@{{ inventory_hostname }}"
+        creates: "/home/{{ hardware_admin_user }}/.ssh/id_ed25519"
+      become_user: "{{ hardware_admin_user }}"
+
+    - name: Set administrator private key permissions
+      ansible.builtin.file:
+        path: "/home/{{ hardware_admin_user }}/.ssh/id_ed25519"
+        owner: "{{ hardware_admin_user }}"
+        group: "{{ hardware_admin_user }}"
+        mode: "0600"
+
+    - name: Set administrator public key permissions
+      ansible.builtin.file:
+        path: "/home/{{ hardware_admin_user }}/.ssh/id_ed25519.pub"
+        owner: "{{ hardware_admin_user }}"
+        group: "{{ hardware_admin_user }}"
+        mode: "0644"
+
+    - name: Read local administrator public key
+      ansible.builtin.slurp:
+        src: "/home/{{ hardware_admin_user }}/.ssh/id_ed25519.pub"
+      register: local_admin_public_key_file
+      no_log: true
+
+    - name: Store local administrator public key for later plays
+      ansible.builtin.set_fact:
+        local_admin_public_key: "{{ local_admin_public_key_file.content | b64decode | trim }}"
+      no_log: true
+
+    - name: Add local administrator to SSH AllowUsers
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^AllowUsers\s+'
+        line: "AllowUsers ansible_admin {{ hardware_admin_user }}"
+        insertafter: EOF
+        validate: /usr/sbin/sshd -t -f %s
+      notify: Reload SSH on hypervisor
+
+    - name: Add local administrator public key to its own account
+      ansible.posix.authorized_key:
+        user: "{{ hardware_admin_user }}"
+        key: "{{ local_admin_public_key }}"
+        state: present
+        manage_dir: true
+      no_log: true
+
+  handlers:
+    - name: Reload SSH on hypervisor
+      become: true
+      ansible.builtin.service:
+        name: ssh
+        state: reloaded
+
+
+# На всех VM, роутерах и cloud-машинах создаём ОБОИХ администраторов.
+# Публичный ключ каждого администратора берём с его host-компьютера.
+- name: Create human administrators on all infrastructure machines
+  hosts: infrastructure
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    admin_key_sources:
+      admin_aleksei: host_1
+      admin_ilja: host_2
+
+  tasks:
+    - name: Check that both host public keys are available
+      ansible.builtin.assert:
+        that:
+          - hostvars['host_1']['local_admin_public_key'] is defined
+          - hostvars['host_2']['local_admin_public_key'] is defined
+
+    - name: Create both human administrators
       ansible.builtin.user:
         name: "{{ item.name }}"
         password: "{{ item.password_hash }}"
@@ -18,5 +145,60 @@
         append: true
         create_home: true
         state: present
-      loop: "{{ vault_admin_users }}"
+      loop: >-
+        {{
+          vault_admin_users
+          | rejectattr('name', 'equalto', 'ansible_admin')
+          | list
+        }}
       no_log: true
+
+    - name: Add both administrator public keys
+      ansible.posix.authorized_key:
+        user: "{{ item.name }}"
+        key: "{{ hostvars[admin_key_sources[item.name]]['local_admin_public_key'] }}"
+        state: present
+        manage_dir: true
+      loop:
+        - name: admin_aleksei
+        - name: admin_ilja
+      no_log: true
+
+    - name: Allow Ansible and both human administrators in SSH on Alpine
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^AllowUsers\s+'
+        line: AllowUsers ansible_admin admin_aleksei admin_ilja
+        insertafter: EOF
+        validate: /usr/sbin/sshd -t -f %s
+      when: ansible_facts.distribution == 'Alpine'
+      notify: Reload SSH on Alpine
+
+    - name: Allow Ansible and both human administrators in SSH on Ubuntu
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/90-infrastructure-users.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          AllowUsers ansible_admin admin_aleksei admin_ilja
+      when: ansible_facts.distribution != 'Alpine'
+      notify: Reload SSH on Ubuntu
+
+    - name: Validate SSH configuration
+      ansible.builtin.command: /usr/sbin/sshd -t
+      changed_when: false
+
+  handlers:
+    - name: Reload SSH on Alpine
+      become: true
+      ansible.builtin.service:
+        name: sshd
+        state: reloaded
+
+    - name: Reload SSH on Ubuntu
+      become: true
+      ansible.builtin.service:
+        name: ssh
+        state: reloaded
+
