@@ -46,19 +46,41 @@ runcmd:
 {% if vm_name in ['east_storage', 'west_storage'] %}
   - |
       set -eu
+
       DISK1=/dev/disk/by-id/virtio-data1
       DISK2=/dev/disk/by-id/virtio-data2
 
-      while [ ! -e "$DISK1" ] || [ ! -e "$DISK2" ]; do
+      udevadm settle --timeout=30
+
+      ATTEMPT=0
+      while [ ! -b "$DISK1" ] || [ ! -b "$DISK2" ]; do
+        ATTEMPT=$((ATTEMPT + 1))
+        if [ "$ATTEMPT" -ge 60 ]; then
+          echo "Storage disks data1 and data2 were not found" >&2
+          exit 1
+        fi
         sleep 1
       done
 
-      if [ ! -e /dev/md0 ]; then
-        mdadm --create /dev/md0 --level=1 --raid-devices=2 "$DISK1" "$DISK2"
+      if [ ! -b /dev/md0 ]; then
+        if mdadm --examine "$DISK1" >/dev/null 2>&1 || mdadm --examine "$DISK2" >/dev/null 2>&1; then
+          mdadm --assemble /dev/md0 "$DISK1" "$DISK2"
+        else
+          printf 'yes\n' | mdadm --create /dev/md0 \
+            --metadata=1.2 \
+            --level=1 \
+            --raid-devices=2 \
+            "$DISK1" "$DISK2"
+        fi
       fi
 
-      if ! blkid /dev/md0 >/dev/null 2>&1; then
+      FILESYSTEM=$(blkid -s TYPE -o value /dev/md0 2>/dev/null || true)
+
+      if [ -z "$FILESYSTEM" ]; then
         mkfs.ext4 -L storage /dev/md0
+      elif [ "$FILESYSTEM" != "ext4" ]; then
+        echo "/dev/md0 contains unexpected filesystem: $FILESYSTEM" >&2
+        exit 1
       fi
 
       mkdir -p /srv/storage
@@ -68,9 +90,16 @@ runcmd:
         echo "UUID=$UUID /srv/storage ext4 defaults,nofail 0 2" >> /etc/fstab
       fi
 
-      mdadm --detail --scan > /etc/mdadm/mdadm.conf
+      ARRAY_LINE=$(mdadm --detail --scan)
+      if ! grep -qF "$ARRAY_LINE" /etc/mdadm/mdadm.conf; then
+        echo "$ARRAY_LINE" >> /etc/mdadm/mdadm.conf
+      fi
+
       update-initramfs -u
-      mount /srv/storage
+      mountpoint -q /srv/storage || mount /srv/storage
+
+      mdadm --detail /dev/md0
+      cat /proc/mdstat
 {% endif %}
   - [systemctl, enable, --now, ssh]
   - [sh, -c, '/usr/sbin/sshd -t && systemctl reload ssh']
