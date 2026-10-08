@@ -1,0 +1,143 @@
+---
+- name: Delete project VMs from host_1
+  hosts: host_1
+  become: true
+  gather_facts: false
+
+  vars:
+    project_vms:
+      - name: cloud_router
+        directory: "/mnt/p5+/KVM/cloud_router"
+      - name: east_router
+        directory: "/mnt/p5+/KVM/east_router"
+      - name: east_web
+        directory: "/mnt/p5+/KVM/east_web"
+      - name: east_db
+        directory: "/mnt/p5+/KVM/east_db"
+      - name: east_storage
+        directory: "/mnt/p5+/KVM/east_storage"
+      - name: load_balancer
+        directory: "/mnt/p5+/KVM/load_balancer"
+      - name: monitoring
+        directory: "/mnt/p5+/KVM/monitoring"
+
+  tasks:
+    - name: List running VMs
+      ansible.builtin.command:
+        argv:
+          - virsh
+          - -c
+          - qemu:///system
+          - list
+          - --name
+      register: running_vms
+      changed_when: false
+
+    - name: List all VMs
+      ansible.builtin.command:
+        argv:
+          - virsh
+          - -c
+          - qemu:///system
+          - list
+          - --all
+          - --name
+      register: existing_vms
+      changed_when: false
+
+    - name: Stop running project VMs
+      ansible.builtin.command:
+        argv:
+          - virsh
+          - -c
+          - qemu:///system
+          - destroy
+          - "{{ item.name }}"
+      loop: "{{ project_vms }}"
+      when: item.name in running_vms.stdout_lines
+
+    - name: Undefine project VMs
+      ansible.builtin.command:
+        argv:
+          - virsh
+          - -c
+          - qemu:///system
+          - undefine
+          - "{{ item.name }}"
+      loop: "{{ project_vms }}"
+      when: item.name in existing_vms.stdout_lines
+
+    - name: Delete project VM directories
+      ansible.builtin.file:
+        path: "{{ item.directory }}"
+        state: absent
+      loop: "{{ project_vms }}"
+
+
+- name: Delete project VMs from host_2
+  hosts: host_2
+  become: true
+  gather_facts: false
+
+  vars:
+    project_vms:
+      - name: west_router
+        directory: "/mnt/disk/VM/west_router"
+      - name: west_web
+        directory: "/mnt/disk/VM/west_web"
+      - name: west_db
+        directory: "/mnt/disk/west_db"
+      - name: west_storage
+        directory: "/mnt/disk/west_storage"
+
+  tasks:
+    - name: List running VMs
+      ansible.builtin.command:
+        argv:
+          - virsh
+          - -c
+          - qemu:///system
+          - list
+          - --name
+      register: running_vms
+      changed_when: false
+
+    - name: List all VMs
+      ansible.builtin.command:
+        argv:
+          - virsh
+          - -c
+          - qemu:///system
+          - list
+          - --all
+          - --name
+      register: existing_vms
+      changed_when: false
+
+    - name: Stop running project VMs
+      ansible.builtin.command:
+        argv:
+          - virsh
+          - -c
+          - qemu:///system
+          - destroy
+          - "{{ item.name }}"
+      loop: "{{ project_vms }}"
+      when: item.name in running_vms.stdout_lines
+
+    - name: Undefine project VMs
+      ansible.builtin.command:
+        argv:
+          - virsh
+          - -c
+          - qemu:///system
+          - undefine
+          - "{{ item.name }}"
+      loop: "{{ project_vms }}"
+      when: item.name in existing_vms.stdout_lines
+
+    - name: Delete project VM directories
+      ansible.builtin.file:
+        path: "{{ item.directory }}"
+        state: absent
+      loop: "{{ project_vms }}"
