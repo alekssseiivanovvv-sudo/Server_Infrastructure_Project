@@ -2,19 +2,21 @@
 Repository for ours distributed server infrastructure project.
 
 Aleksei:
-Infrastructure design
-Cloud-init and VMs configurations
-Networking and security
-Infrastructure deployment
-Automation with Ansible
+
+- Infrastructure design
+- Cloud-init and VMs configurations
+- Networking and security
+- Infrastructure deployment
+- Automation with Ansible
 
 Ilja:
-NGINX configuration
-PostgreSQL configuration, DB engineering
-Python Backend programming
-HTML website Frontend programming and design
-Seaweed FS configuration
-Docker container creation & configuration
+
+- NGINX configuration
+- PostgreSQL configuration, DB engineering
+- Python Backend programming
+- HTML website Frontend programming and design
+- Seaweed FS configuration
+- Docker container creation & configuration
 
 Contains:
 - Ansible
