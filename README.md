@@ -1,5 +1,5 @@
 # Server_Infrastructure_Project
-Repository for my distributed server infrastructure project.
+Repository for ours distributed server infrastructure project.
 
 Contains:
 - Ansible
