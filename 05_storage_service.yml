@@ -1,0 +1,11 @@
+---
+- name: Install Seaweed FS, Restics & check RAID 1
+  hosts: fs_servers
+  become: true
+  vars_files:
+    - group_vars/all/vault.yml
+  vars:
+    seaweedfs_version: "4.48"
+  roles:
+    - seaweedfs
+    - restics
