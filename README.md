@@ -11,6 +11,7 @@ Aleksei:
 
 Ilja:
 
+- Monitoring configuration
 - NGINX configuration
 - PostgreSQL configuration, DB engineering
 - Python Backend programming
