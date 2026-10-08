@@ -1,0 +1,58 @@
+services:
+  pg-primary:
+    image: postgres:16
+    container_name: pg-primary
+    environment:
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: strongpassword
+      POSTGRES_DB: shopdb
+    volumes:
+      - pg_primary_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  pg-replica:
+    image: postgres:16
+    container_name: pg-replica
+    environment:
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: strongpassword
+    volumes:
+      - pg_replica_data:/var/lib/postgresql/data
+    depends_on:
+      - pg-primary
+    restart: unless-stopped
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs
+    command: "server -dir=/data -s3 -s3.port=8333 -master.port=9333"
+    volumes:
+      - ./seaweedfs/data:/data
+    ports:
+      - "9333:9333"
+      - "8333:8333"
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: python-backend
+    environment:
+      DB_HOST: pg-primary
+      DB_NAME: shopdb
+      DB_USER: appuser
+      DB_PASS: strongpassword
+      SEAWEED_ENDPOINT: http://seaweedfs:8333
+      SEAWEED_ACCESS_KEY: any
+      SEAWEED_SECRET_KEY: any
+    depends_on:
+      - pg-primary
+      - seaweedfs
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+
+volumes:
+  pg_primary_data:
+  pg_replica_data:
