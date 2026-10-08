@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Магазин</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; }
+        .product { border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 8px;
+                   display: flex; align-items: center; gap: 15px; }
+        .product img { width: 80px; height: 80px; object-fit: cover; border-radius: 4px; }
+        .product-info { flex: 1; }
+        button { padding: 8px 16px; cursor: pointer; border-radius: 4px; border: none;
+                 background: #007bff; color: white; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .stock { color: #666; font-size: 0.9em; }
+        #add-form { margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 8px; }
+        #add-form input { padding: 8px; margin: 5px; border: 1px solid #ccc; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>🛍️ Товары</h1>
+    <div id="products"></div>
+
+    <div id="add-form">
+        <h3>Добавить товар</h3>
+        <input type="text"   id="add-name"  placeholder="Название" required>
+        <input type="number" id="add-price" placeholder="Цена" step="0.01" min="0" required>
+        <input type="number" id="add-stock" placeholder="Количество" min="0" required>
+        <input type="file"   id="add-image" accept="image/*">
+        <button onclick="addProduct()">Добавить</button>
+    </div>
+
+    <script>
+        const API = '/api';
+
+        async function loadProducts() {
+            const res = await fetch(API + '/products');
+            const products = await res.json();
+            const container = document.getElementById('products');
+            container.innerHTML = products.map(p => `
+                <div class="product">
+                    ${p.image_key ? `<img src="/images/${p.image_key}" alt="${p.name}">` : ''}
+                    <div class="product-info">
+                        <strong>${p.name}</strong><br>
+                        <span class="stock">В наличии: ${p.stock} (${p.price} ₽)</span>
+                    </div>
+                    <button onclick="buyProduct(${p.id}, 1)" ${p.stock < 1 ? 'disabled' : ''}>
+                        Купить 1
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function buyProduct(id, quantity) {
+            const res = await fetch(API + '/buy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ product_id: id, quantity: quantity })
+            });
+            const data = await res.json();
+            if (data.error) {
+                alert(data.error);
+            } else {
+                alert('Куплено! Осталось: ' + data.remaining);
+                loadProducts();
+            }
+        }
+
+        async function addProduct() {
+            const name  = document.getElementById('add-name').value.trim();
+            const price = document.getElementById('add-price').value;
+            const stock = document.getElementById('add-stock').value;
+            const fileInput = document.getElementById('add-image');
+            const file = fileInput.files[0];
+
+            if (!name) { alert('Введите название'); return; }
+            if (!price || isNaN(parseFloat(price)) || parseFloat(price) < 0) {
+                alert('Цена должна быть неотрицательным числом'); return;
+            }
+            if (!stock || isNaN(parseInt(stock)) || parseInt(stock) < 0) {
+                alert('Количество должно быть неотрицательным целым числом'); return;
+            }
+
+            const fd = new FormData();
+            fd.append('name', name);
+            fd.append('price', price);
+            fd.append('stock', stock);
+            if (file) fd.append('image', file);
+
+            const res = await fetch(API + '/products', {
+                method: 'POST',
+                body: fd
+            });
+            const data = await res.json();
+            if (data.error) {
+                alert(data.error);
+            } else {
+                alert('Товар добавлен!');
+                document.getElementById('add-name').value = '';
+                document.getElementById('add-price').value = '';
+                document.getElementById('add-stock').value = '';
+                fileInput.value = '';
+                loadProducts();
+            }
+        }
+
+        loadProducts();
+    </script>
+</body>
+</html>
