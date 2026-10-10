@@ -1,0 +1,70 @@
+---
+- name: Assert required vars are set
+  ansible.builtin.assert:
+    that:
+      - pool_path is defined
+      - alpine_image_path is defined
+      - ubuntu_image_path is defined
+      - routers is defined
+      - servers is defined
+    fail_msg: "vm_images role requires pool_path, alpine_image_path, ubuntu_image_path, routers, servers"
+
+- name: Ensure libvirt-qemu can traverse the pool
+  ansible.builtin.file:
+    path: "{{ pool_path }}"
+    state: directory
+    owner: root
+    group: kvm
+    mode: "0750"
+
+# ---------------------------------------------------------------------------
+# Routers — no disk_gib in the source data, so use a default.
+# ---------------------------------------------------------------------------
+- name: Ensure per-router directory exists
+  ansible.builtin.file:
+    path: "{{ pool_path }}/{{ item.key }}"
+    state: directory
+    owner: root
+    group: kvm
+    mode: "0750"
+  loop: "{{ routers | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Stage router disks (alpine base)
+  ansible.builtin.include_tasks: stage_disk.yml
+  loop: "{{ routers | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  vars:
+    vm_name: "{{ item.key }}"
+    vm_os: "alpine"
+    vm_disk_gib: "{{ item.value.disk_gib | default(10) }}"
+    vm_extra_disks: []
+
+# ---------------------------------------------------------------------------
+# Servers — os comes from locals, disk_gib is always set.
+# ---------------------------------------------------------------------------
+- name: Ensure per-server directory exists
+  ansible.builtin.file:
+    path: "{{ pool_path }}/{{ item.key }}"
+    state: directory
+    owner: root
+    group: kvm
+    mode: "0750"
+  loop: "{{ servers | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Stage server disks
+  ansible.builtin.include_tasks: stage_disk.yml
+  loop: "{{ servers | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  vars:
+    vm_name: "{{ item.key }}"
+    vm_os: "{{ item.value.os }}"
+    vm_disk_gib: "{{ item.value.disk_gib }}"
+    vm_extra_disks: >-
+      {{ (item.value.storage | default(false))
+         | ternary(['data1', 'data2'], []) }}

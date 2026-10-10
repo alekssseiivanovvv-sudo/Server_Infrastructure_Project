@@ -1,10 +1,10 @@
 provider "libvirt" {
   alias = "host_1"
-  uri   = "qemu+sshcmd://host_1/system"
+  uri   = "qemu+sshcmd://ansible_admin@100.64.0.10/system"
 }
 
 provider "libvirt" {
   alias = "host_2"
-  uri   = "qemu+sshcmd://host_2/system"
+  uri   = "qemu+sshcmd://ansible_admin@100.64.0.11/system"
 }
 

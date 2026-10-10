@@ -1,0 +1,62 @@
+---
+- name: "{{ vm_name }} | resolve base image"
+  ansible.builtin.set_fact:
+    vm_base_image: "{{ vm_images_base[vm_os] }}"
+
+- name: "{{ vm_name }} | assert base image exists"
+  ansible.builtin.stat:
+    path: "{{ vm_base_image }}"
+  register: vm_base_stat
+
+- name: "{{ vm_name }} | fail if base image missing"
+  ansible.builtin.fail:
+    msg: "Base image {{ vm_base_image }} for {{ vm_name }} does not exist"
+  when: not vm_base_stat.stat.exists
+
+- name: "{{ vm_name }} | stage system disk (convert base → per-VM qcow2)"
+  ansible.builtin.command:
+    argv:
+      - qemu-img
+      - convert
+      - -f
+      - qcow2
+      - -O
+      - qcow2
+      - "{{ vm_base_image }}"
+      - "{{ pool_path }}/{{ vm_name }}/{{ vm_name }}.qcow2"
+    creates: "{{ pool_path }}/{{ vm_name }}/{{ vm_name }}.qcow2"
+
+- name: "{{ vm_name }} | resize system disk"
+  ansible.builtin.command:
+    argv:
+      - qemu-img
+      - resize
+      - "{{ pool_path }}/{{ vm_name }}/{{ vm_name }}.qcow2"
+      - "{{ vm_disk_gib }}G"
+
+- name: "{{ vm_name }} | fix system disk ownership"
+  ansible.builtin.file:
+    path: "{{ pool_path }}/{{ vm_name }}/{{ vm_name }}.qcow2"
+    owner: libvirt-qemu
+    group: kvm
+    mode: "0600"
+
+- name: "{{ vm_name }} | create extra blank disks"
+  ansible.builtin.command:
+    argv:
+      - qemu-img
+      - create
+      - -f
+      - qcow2
+      - "{{ pool_path }}/{{ vm_name }}/{{ item }}.qcow2"
+      - 30G
+    creates: "{{ pool_path }}/{{ vm_name }}/{{ item }}.qcow2"
+  loop: "{{ vm_extra_disks }}"
+
+- name: "{{ vm_name }} | fix extra disk ownership"
+  ansible.builtin.file:
+    path: "{{ pool_path }}/{{ vm_name }}/{{ item }}.qcow2"
+    owner: libvirt-qemu
+    group: kvm
+    mode: "0600"
+  loop: "{{ vm_extra_disks }}"

@@ -1,0 +1,36 @@
+---
+# Prepares per-VM qcow2 disks (convert + resize + chown) so Terraform can
+# define the libvirt domains against an already-staged image.
+#
+# Run BEFORE `terraform apply`:
+#   ansible-playbook -i inventories/production/hosts.ini prepare_images.yml
+
+- name: Prepare VM images on host_1
+  hosts: host_1
+  become: true
+  gather_facts: false
+
+  vars:
+    pool_path: "/mnt/p5+/KVM/terraform-host-1"
+    alpine_image_path: "/mnt/a400/ISO/alpine-3.24.2-x86_64-cloudinit-r0.qcow2"
+    ubuntu_image_path: "/mnt/a400/ISO/ubuntu-26.04-server-cloudimg-amd64.img"
+    routers: "{{ hostvars['localhost'].host_1_routers }}"
+    servers: "{{ hostvars['localhost'].host_1_servers }}"
+
+  roles:
+    - vm_images
+
+- name: Prepare VM images on host_2
+  hosts: host_2
+  become: true
+  gather_facts: false
+
+  vars:
+    pool_path: "/mnt/disk/VM/terraform-host-2"
+    alpine_image_path: "/mnt/disk/ISO/alpine-3.24.2-x86_64-cloudinit-r0.qcow2"
+    ubuntu_image_path: "/mnt/disk/ISO/ubuntu-26.04-server-cloudimg-amd64.img"
+    routers: "{{ hostvars['localhost'].host_2_routers }}"
+    servers: "{{ hostvars['localhost'].host_2_servers }}"
+
+  roles:
+    - vm_images

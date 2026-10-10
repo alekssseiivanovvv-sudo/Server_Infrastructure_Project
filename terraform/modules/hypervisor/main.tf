@@ -192,12 +192,14 @@ resource "libvirt_domain" "router" {
   running     = true
   autostart   = true
 
-  os = {
-    type         = "hvm"
-    type_arch    = "x86_64"
-    type_machine = "q35"
-    boot_devices = ["hd"]
-  }
+os = {
+  type         = "hvm"
+  type_arch    = "x86_64"
+  type_machine = "q35"
+  boot_devices = [
+    { dev = "hd" }
+  ]
+}
 
   devices = {
     disks = [
@@ -272,12 +274,14 @@ resource "libvirt_domain" "server" {
   running     = true
   autostart   = true
 
-  os = {
-    type         = "hvm"
-    type_arch    = "x86_64"
-    type_machine = "q35"
-    boot_devices = ["hd"]
-  }
+os = {
+  type         = "hvm"
+  type_arch    = "x86_64"
+  type_machine = "q35"
+  boot_devices = [
+    { dev = "hd" }
+  ]
+}
 
   devices = {
     disks = concat(
