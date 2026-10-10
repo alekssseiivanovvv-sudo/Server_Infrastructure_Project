@@ -1,0 +1,13 @@
+version: 1
+
+config:
+  - type: physical
+    name: eth0
+    mac_address: ${jsonencode(mac)}
+    subnets:
+      - type: static
+        address: ${jsonencode(ip)}
+        netmask: 255.255.255.224
+        gateway: ${jsonencode(gateway)}
+        dns_nameservers: [1.1.1.1, 9.9.9.9]
+

@@ -16,6 +16,9 @@
         <bridge name='virbr-internal'/>
       </network>
 
+- name: Reconnect after changing group membership
+  ansible.builtin.meta: reset_connection
+
 - name: Create and enable internal network if missing
   ansible.builtin.shell: |
     set -eu
