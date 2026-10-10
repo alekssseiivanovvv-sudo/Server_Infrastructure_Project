@@ -1,10 +1,33 @@
 ---
-- name: Install libvirt
+- name: Install libvirt packages
   ansible.builtin.apt:
     name: "{{ libvirt_packages }}"
     state: present
     update_cache: true
     cache_valid_time: 3600
+
+- name: Allow ansible_admin to manage libvirt
+  ansible.builtin.user:
+    name: ansible_admin
+    groups:
+      - libvirt
+    append: true
+
+- name: Reconnect after changing group membership
+  ansible.builtin.meta: reset_connection
+
+- name: List defined networks
+  ansible.builtin.command: virsh -c qemu:///system net-list --all --name
+  register: defined_networks
+  changed_when: false
+
+- name: Check that the default network exists
+  ansible.builtin.assert:
+    that:
+      - "'default' in defined_networks.stdout_lines"
+    fail_msg: >-
+      The default libvirt network is missing.
+      Restore or define it before continuing.
 
 - name: Write internal network definition
   ansible.builtin.copy:
@@ -16,15 +39,35 @@
         <bridge name='virbr-internal'/>
       </network>
 
-- name: Reconnect after changing group membership
-  ansible.builtin.meta: reset_connection
+- name: Define internal network if missing
+  ansible.builtin.command: virsh -c qemu:///system net-define /tmp/lab-internal.xml
+  when: "'internal' not in defined_networks.stdout_lines"
 
-- name: Create and enable internal network if missing
-  ansible.builtin.shell: |
-    set -eu
-    virsh -c qemu:///system net-define /tmp/lab-internal.xml
-    virsh -c qemu:///system net-start internal
-    virsh -c qemu:///system net-autostart internal
-  args:
-    creates: /etc/libvirt/qemu/networks/internal.xml
+- name: List active networks
+  ansible.builtin.command: virsh -c qemu:///system net-list --name
+  register: active_networks
+  changed_when: false
 
+- name: Start project networks
+  ansible.builtin.command: "virsh -c qemu:///system net-start {{ item }}"
+  loop:
+    - default
+    - internal
+  when: item not in active_networks.stdout_lines
+
+- name: List networks with autostart enabled
+  ansible.builtin.command: virsh -c qemu:///system net-list --all --autostart --name
+  register: autostart_networks
+  changed_when: false
+
+- name: Enable network autostart
+  ansible.builtin.command: "virsh -c qemu:///system net-autostart {{ item }}"
+  loop:
+    - default
+    - internal
+  when: item not in autostart_networks.stdout_lines
+
+- name: Check libvirt access without sudo
+  become: false
+  ansible.builtin.command: virsh -c qemu:///system list --all
+  changed_when: false

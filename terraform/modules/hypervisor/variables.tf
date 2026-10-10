@@ -30,11 +30,13 @@ variable "servers" {
 }
 
 variable "alpine_image_path" {
-  type = string
+  description = "Absolute path to the existing Alpine QCOW2 image on this hypervisor"
+  type        = string
 }
 
 variable "ubuntu_image_path" {
-  type = string
+  description = "Absolute path to the existing Ubuntu QCOW2 image on this hypervisor"
+  type        = string
 }
 
 variable "ansible_public_key_file" {

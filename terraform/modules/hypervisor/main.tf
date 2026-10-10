@@ -26,40 +26,6 @@ resource "libvirt_pool" "project" {
   }
 }
 
-resource "libvirt_volume" "alpine_base" {
-  name = "alpine-3.24.2-base.qcow2"
-  pool = libvirt_pool.project.name
-
-  target = {
-    format = {
-      type = "qcow2"
-    }
-  }
-
-  create = {
-    content = {
-      url = pathexpand(var.alpine_image_path)
-    }
-  }
-}
-
-resource "libvirt_volume" "ubuntu_base" {
-  name = "ubuntu-26.04-base.qcow2"
-  pool = libvirt_pool.project.name
-
-  target = {
-    format = {
-      type = "qcow2"
-    }
-  }
-
-  create = {
-    content = {
-      url = pathexpand(var.ubuntu_image_path)
-    }
-  }
-}
-
 resource "libvirt_volume" "router_disk" {
   for_each = var.routers
 
@@ -74,7 +40,8 @@ resource "libvirt_volume" "router_disk" {
   }
 
   backing_store = {
-    path = libvirt_volume.alpine_base.path
+    path = var.alpine_image_path
+
     format = {
       type = "qcow2"
     }
@@ -97,9 +64,10 @@ resource "libvirt_volume" "server_disk" {
   backing_store = {
     path = (
       each.value.os == "alpine"
-      ? libvirt_volume.alpine_base.path
-      : libvirt_volume.ubuntu_base.path
+      ? var.alpine_image_path
+      : var.ubuntu_image_path
     )
+
     format = {
       type = "qcow2"
     }
