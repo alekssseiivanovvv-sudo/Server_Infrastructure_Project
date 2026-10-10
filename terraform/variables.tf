@@ -21,3 +21,10 @@ variable "tailscale_auth_key" {
   sensitive   = true
 }
 
+variable "alpine_image_path" {
+  type = string
+}
+
+variable "ubuntu_image_path" {
+  type = string
+}

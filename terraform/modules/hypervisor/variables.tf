@@ -29,16 +29,6 @@ variable "servers" {
   }))
 }
 
-variable "alpine_image_path" {
-  description = "Absolute path to the existing Alpine QCOW2 image on this hypervisor"
-  type        = string
-}
-
-variable "ubuntu_image_path" {
-  description = "Absolute path to the existing Ubuntu QCOW2 image on this hypervisor"
-  type        = string
-}
-
 variable "ansible_public_key_file" {
   type = string
 }
@@ -66,3 +56,5 @@ variable "tailscale_auth_key" {
   sensitive   = true
 }
 
+variable "alpine_image_path" { type = string }
+variable "ubuntu_image_path" { type = string }

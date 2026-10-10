@@ -129,7 +129,8 @@ module "host_1" {
   providers = {
     libvirt = libvirt.host_1
   }
-
+  alpine_image_path        = "/mnt/a400/ISO/alpine-3.24.2-x86_64-cloudinit-r0.qcow2"
+  ubuntu_image_path        = "/mnt/a400/ISO/ubuntu-26.04-server-cloudimg-amd64.img"
   pool_name               = "server_infrastructure_host_1"
   pool_path               = "/mnt/p5+/KVM/terraform-host-1"
   routers                 = local.host_1_routers
@@ -146,7 +147,8 @@ module "host_2" {
   providers = {
     libvirt = libvirt.host_2
   }
-
+  alpine_image_path        = "/mnt/disk/ISO/alpine-3.24.2-x86_64-cloudinit-r0.qcow2"
+  ubuntu_image_path        = "/mnt/disk/ISO/ubuntu-26.04-server-cloudimg-amd64.img"
   pool_name               = "server_infrastructure_host_2"
   pool_path               = "/mnt/disk/VM/terraform-host-2"
   routers                 = local.host_2_routers
