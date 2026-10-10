@@ -20,6 +20,7 @@
     router_lan_subnet: 192.168.74.0/27
     router_wan_mac: "52:54:00:74:01:01"
     router_lan_mac: "52:54:00:74:01:02"
+    router_tailscale_auth_key: "{{ vault_cloud_router_tailscale_auth_key }}"
 
   roles:
     - router_creation
@@ -46,6 +47,7 @@
     router_lan_subnet: 192.168.72.0/27
     router_wan_mac: "52:54:00:72:01:01"
     router_lan_mac: "52:54:00:72:01:02"
+    router_tailscale_auth_key: "{{ vault_east_router_tailscale_auth_key }}"
 
   roles:
     - router_creation
@@ -76,6 +78,7 @@
     router_lan_subnet: 192.168.73.0/27
     router_wan_mac: "52:54:00:73:01:01"
     router_lan_mac: "52:54:00:73:01:02"
+    router_tailscale_auth_key: "{{ vault_west_router_tailscale_auth_key }}"
 
   roles:
     - role: router_creation

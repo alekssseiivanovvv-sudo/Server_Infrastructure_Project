@@ -30,7 +30,7 @@ write_files:
 
   - path: /root/tailscale-auth-key
     permissions: "0600"
-    content: {{ vault_cloud_router_tailscale_auth_key | to_json }}
+    content: {{ router_tailscale_auth_key | to_json }}
 
   - path: /etc/sysctl.d/99-router.conf
     permissions: "0644"
@@ -150,6 +150,7 @@ runcmd:
 
       tailscale up \
         --auth-key=file:/root/tailscale-auth-key \
+        --hostname={{ router_hostname }} \
         --advertise-routes={{ router_lan_subnet }} \
         --accept-routes=true \
         --snat-subnet-routes=false \
