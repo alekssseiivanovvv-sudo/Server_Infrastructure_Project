@@ -25,6 +25,7 @@ Ilja:
 Contains:
 - Ansible
 - Ansible Vault (encrypted)
+- Terraform
 - Cloud-init & VMs configurations
 - Docker container files
 - Database files
