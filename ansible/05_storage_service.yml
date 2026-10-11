@@ -1,6 +1,6 @@
 ---
 - name: Install and configure SeaweedFS storage
-  hosts: fs_servers
+  hosts: seaweed_master_servers
   become: true
   gather_facts: true
 
@@ -14,6 +14,13 @@
     seaweed_secondary_host: west_storage
     seaweed_data_dir: /srv/storage/seaweed
     seaweed_volume_max: 20
+    seaweed_master_peers: >-
+      {{
+        groups['seaweed_master_servers']
+        | map('extract', hostvars, 'ansible_host')
+        | map('regex_replace', '$', ':9333')
+        | join(',')
+      }}
 
   roles:
     - seaweedfs

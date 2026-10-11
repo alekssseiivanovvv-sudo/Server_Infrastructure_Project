@@ -1,0 +1,282 @@
+---
+- name: Install etcd on quorum node
+  hosts: etcd_servers
+  become: true
+  gather_facts: true
+
+  vars:
+    etcd_name: "{{ inventory_hostname }}"
+    etcd_data_dir: /var/lib/etcd
+    etcd_client_port: 2379
+    etcd_peer_port: 2380
+
+  tasks:
+    - name: Install etcd packages
+      ansible.builtin.apt:
+        name:
+          - etcd-server
+          - etcd-client
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Configure single-node etcd for Patroni DCS
+      ansible.builtin.copy:
+        dest: /etc/default/etcd
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          ETCD_NAME="{{ etcd_name }}"
+          ETCD_DATA_DIR="{{ etcd_data_dir }}"
+          ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:{{ etcd_client_port }}"
+          ETCD_ADVERTISE_CLIENT_URLS="http://{{ ansible_host }}:{{ etcd_client_port }}"
+          ETCD_LISTEN_PEER_URLS="http://{{ ansible_host }}:{{ etcd_peer_port }}"
+          ETCD_INITIAL_ADVERTISE_PEER_URLS="http://{{ ansible_host }}:{{ etcd_peer_port }}"
+          ETCD_INITIAL_CLUSTER="{{ etcd_name }}=http://{{ ansible_host }}:{{ etcd_peer_port }}"
+          ETCD_INITIAL_CLUSTER_TOKEN="project-postgres-cluster"
+          ETCD_INITIAL_CLUSTER_STATE="new"
+      notify: Restart etcd
+
+    - name: Enable and start etcd
+      ansible.builtin.systemd:
+        name: etcd
+        enabled: true
+        state: started
+        daemon_reload: true
+
+  handlers:
+    - name: Restart etcd
+      ansible.builtin.systemd:
+        name: etcd
+        state: restarted
+        daemon_reload: true
+
+
+- name: Install PostgreSQL and Patroni on DB nodes
+  hosts: patroni_servers
+  become: true
+  gather_facts: true
+  serial: 1
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    patroni_cluster_name: project-postgres
+    patroni_rest_port: 8008
+    patroni_data_dir: /var/lib/postgresql/patroni-main
+    patroni_etcd_host: "{{ hostvars[groups['etcd_servers'][0]].ansible_host }}"
+    patroni_allowed_networks:
+      - 192.168.72.0/27
+      - 192.168.73.0/27
+      - 192.168.74.0/27
+    postgres_app_database: shopdb
+    postgres_app_user: appuser
+    postgres_replication_user: replicator
+
+  pre_tasks:
+    - name: Check database Vault variables
+      ansible.builtin.assert:
+        that:
+          - vault_postgres_superuser_password is defined
+          - vault_postgres_replication_password is defined
+          - vault_postgres_app_password is defined
+        fail_msg: Add vault_postgres_superuser_password, vault_postgres_replication_password and vault_postgres_app_password to group_vars/group/all/vault.yml.
+      no_log: true
+
+  tasks:
+    - name: Install PostgreSQL and Patroni packages
+      ansible.builtin.apt:
+        name:
+          - postgresql
+          - postgresql-client
+          - postgresql-contrib
+          - patroni
+          - python3-psycopg2
+          - python3-etcd3gw
+          - curl
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Find installed PostgreSQL version
+      ansible.builtin.shell: "ls -1 /usr/lib/postgresql | sort -V | tail -n 1"
+      register: postgresql_version
+      changed_when: false
+
+    - name: Stop default PostgreSQL service
+      ansible.builtin.systemd:
+        name: postgresql
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Create Patroni configuration directory
+      ansible.builtin.file:
+        path: /etc/patroni
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Create Patroni data directory
+      ansible.builtin.file:
+        path: "{{ patroni_data_dir }}"
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: "0700"
+
+    - name: Configure Patroni
+      ansible.builtin.copy:
+        dest: /etc/patroni/config.yml
+        owner: root
+        group: root
+        mode: "0600"
+        content: |
+          scope: {{ patroni_cluster_name }}
+          namespace: /service/
+          name: {{ inventory_hostname }}
+
+          restapi:
+            listen: {{ ansible_host }}:{{ patroni_rest_port }}
+            connect_address: {{ ansible_host }}:{{ patroni_rest_port }}
+
+          etcd3:
+            host: {{ patroni_etcd_host }}:2379
+
+          bootstrap:
+            dcs:
+              ttl: 30
+              loop_wait: 10
+              retry_timeout: 10
+              maximum_lag_on_failover: 1048576
+              postgresql:
+                use_pg_rewind: true
+                parameters:
+                  wal_level: replica
+                  hot_standby: "on"
+                  wal_keep_size: 256MB
+                  max_wal_senders: 10
+                  max_replication_slots: 10
+            initdb:
+              - encoding: UTF8
+              - data-checksums
+            pg_hba:
+              - local all all peer
+              - host all all 127.0.0.1/32 scram-sha-256
+          {% for network in patroni_allowed_networks %}
+              - host all all {{ network }} scram-sha-256
+              - host replication {{ postgres_replication_user }} {{ network }} scram-sha-256
+          {% endfor %}
+            users:
+              {{ postgres_app_user }}:
+                password: {{ vault_postgres_app_password | to_json }}
+                options:
+                  - login
+
+          postgresql:
+            listen: {{ ansible_host }}:5432
+            connect_address: {{ ansible_host }}:5432
+            data_dir: {{ patroni_data_dir }}
+            bin_dir: /usr/lib/postgresql/{{ postgresql_version.stdout }}/bin
+            pgpass: /tmp/pgpass
+            authentication:
+              superuser:
+                username: postgres
+                password: {{ vault_postgres_superuser_password | to_json }}
+              replication:
+                username: {{ postgres_replication_user }}
+                password: {{ vault_postgres_replication_password | to_json }}
+            parameters:
+              unix_socket_directories: /var/run/postgresql
+
+          tags:
+            nofailover: false
+            noloadbalance: false
+            clonefrom: false
+            nosync: false
+      no_log: true
+      notify: Restart Patroni
+
+    - name: Enable and start Patroni
+      ansible.builtin.systemd:
+        name: patroni
+        enabled: true
+        state: started
+        daemon_reload: true
+
+  handlers:
+    - name: Restart Patroni
+      ansible.builtin.systemd:
+        name: patroni
+        state: restarted
+        daemon_reload: true
+
+
+- name: Create application database on current primary
+  hosts: east_db
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    postgres_app_database: shopdb
+    postgres_app_user: appuser
+
+  tasks:
+    - name: Wait for Patroni primary API
+      ansible.builtin.uri:
+        url: "http://{{ ansible_host }}:8008/primary"
+        status_code: 200
+      register: patroni_primary_check
+      retries: 30
+      delay: 5
+      until: patroni_primary_check.status == 200
+
+    - name: Create application database
+      ansible.builtin.shell: |
+        set -eu
+        export PGPASSWORD={{ vault_postgres_superuser_password | quote }}
+        if ! psql -h {{ ansible_host }} -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname='{{ postgres_app_database }}'" | grep -q 1; then
+          createdb -h {{ ansible_host }} -U postgres -O "{{ postgres_app_user }}" "{{ postgres_app_database }}"
+        fi
+      no_log: true
+      changed_when: false
+
+    - name: Create products table for test shop database
+      ansible.builtin.shell: |
+        set -eu
+        export PGPASSWORD={{ vault_postgres_superuser_password | quote }}
+        psql -h {{ ansible_host }} -U postgres -d "{{ postgres_app_database }}" <<'SQL'
+        CREATE TABLE IF NOT EXISTS products (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          price NUMERIC(10, 2) NOT NULL,
+          stock INTEGER NOT NULL DEFAULT 0,
+          image_key VARCHAR(512)
+        );
+        ALTER TABLE public.products OWNER TO {{ postgres_app_user }};
+        ALTER SEQUENCE IF EXISTS products_id_seq OWNER TO {{ postgres_app_user }};
+        GRANT ALL PRIVILEGES ON TABLE public.products TO {{ postgres_app_user }};
+        GRANT USAGE, SELECT, UPDATE ON SEQUENCE products_id_seq TO {{ postgres_app_user }};
+        SQL
+      no_log: true
+      changed_when: false
+
+    - name: Show Patroni cluster status
+      ansible.builtin.command:
+        argv:
+          - patronictl
+          - -c
+          - /etc/patroni/config.yml
+          - list
+      register: patroni_cluster_status
+      changed_when: false
+
+    - name: Print Patroni cluster status
+      ansible.builtin.debug:
+        var: patroni_cluster_status.stdout_lines

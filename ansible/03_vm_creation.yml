@@ -95,7 +95,7 @@
     - vm_creation
 
 
-- name: Create monitoring
+- name: Create cloud_quorum
   hosts: host_1
   become: true
   gather_facts: false
@@ -104,6 +104,31 @@
     - group_vars/group/all/vault.yml
 
   vars:
+    vm_name: cloud_quorum
+    vm_os: ubuntu
+    vm_ip: 192.168.72.5
+    vm_gateway: 192.168.72.1
+    vm_memory: 2048
+    vm_cpus: 1
+    vm_disk_size: 20G
+    vm_mac: "52:54:00:72:05:01"
+    vm_image: "/mnt/a400/ISO/ubuntu-26.04-server-cloudimg-amd64.img"
+    vm_directory: "/mnt/p5+/KVM/cloud_quorum"
+
+  roles:
+    - vm_creation
+
+
+- name: Create monitoring
+  hosts: host_2
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    create_west: true
     vm_name: monitoring
     vm_os: ubuntu
     vm_ip: 192.168.74.3
@@ -112,11 +137,12 @@
     vm_cpus: 2
     vm_disk_size: 40G
     vm_mac: "52:54:00:74:03:01"
-    vm_image: "/mnt/a400/ISO/ubuntu-26.04-server-cloudimg-amd64.img"
-    vm_directory: "/mnt/p5+/KVM/monitoring"
+    vm_image: "/mnt/disk/ISO/ubuntu-26.04-server-cloudimg-amd64.img"
+    vm_directory: "/mnt/disk/monitoring"
 
   roles:
-    - vm_creation
+    - role: vm_creation
+      when: create_west | bool
 
 
 - name: Create west_web

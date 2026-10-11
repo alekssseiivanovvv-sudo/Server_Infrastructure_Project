@@ -1,0 +1,37 @@
+---
+- name: Switch PostgreSQL primary role to west_db through Patroni
+  hosts: patroni_servers
+  become: true
+  gather_facts: false
+  run_once: true
+
+  vars:
+    patroni_cluster_name: project-postgres
+    patroni_candidate: west_db
+
+  tasks:
+    - name: Run Patroni switchover to west_db
+      ansible.builtin.command:
+        argv:
+          - patronictl
+          - -c
+          - /etc/patroni/config.yml
+          - switchover
+          - "{{ patroni_cluster_name }}"
+          - --candidate
+          - "{{ patroni_candidate }}"
+          - --force
+
+    - name: Show Patroni cluster status
+      ansible.builtin.command:
+        argv:
+          - patronictl
+          - -c
+          - /etc/patroni/config.yml
+          - list
+      register: patroni_cluster_status
+      changed_when: false
+
+    - name: Print Patroni cluster status
+      ansible.builtin.debug:
+        var: patroni_cluster_status.stdout_lines
