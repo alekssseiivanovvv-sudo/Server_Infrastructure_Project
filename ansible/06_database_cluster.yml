@@ -3,7 +3,8 @@
   hosts: etcd_servers
   become: true
   gather_facts: true
-
+  vars_files:
+    - group_vars/group/all/vault.yml
   vars:
     etcd_name: "{{ inventory_hostname }}"
     etcd_data_dir: /var/lib/etcd
