@@ -1,0 +1,14 @@
+[Unit]
+Description=SeaweedFS Master {{ inventory_hostname }}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User={{ seaweed_admin_user }}
+Group={{ seaweed_admin_user }}
+ExecStart=/usr/local/bin/weed master -ip={{ ansible_host }} -port=9333 -mdir={{ seaweed_data_dir }}/master
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

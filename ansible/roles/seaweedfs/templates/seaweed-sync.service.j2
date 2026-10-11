@@ -1,0 +1,14 @@
+[Unit]
+Description=SeaweedFS Sync {{ seaweed_primary_host }} To {{ seaweed_secondary_host }}
+After=network-online.target seaweed-filer.service
+Wants=network-online.target
+
+[Service]
+User={{ seaweed_admin_user }}
+Group={{ seaweed_admin_user }}
+ExecStart=/usr/local/bin/weed filer.sync -a={{ hostvars[seaweed_primary_host].ansible_host }}:8888 -b={{ hostvars[seaweed_secondary_host].ansible_host }}:8888 -isActivePassive -a.filerProxy -b.filerProxy
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

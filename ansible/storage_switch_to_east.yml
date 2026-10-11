@@ -1,0 +1,16 @@
+---
+- name: Switch SeaweedFS primary role to east storage
+  hosts: fs_servers
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    seaweed_admin_user: seaweed_sysuser
+    seaweed_active_host: east_storage
+    seaweed_passive_host: west_storage
+
+  roles:
+    - seaweedfs_switch

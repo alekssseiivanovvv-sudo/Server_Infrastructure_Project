@@ -1,0 +1,21 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart SeaweedFS
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: restarted
+    daemon_reload: true
+  loop:
+    - seaweed-master
+    - seaweed-volume
+    - seaweed-filer
+    - seaweed-s3
+
+- name: Restart SeaweedFS sync
+  ansible.builtin.systemd:
+    name: seaweed-sync
+    state: restarted
+    daemon_reload: true

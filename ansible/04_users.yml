@@ -148,7 +148,7 @@
       loop: >-
         {{
           vault_admin_users
-          | rejectattr('name', 'equalto', 'ansible_admin')
+          | selectattr('name', 'in', ['admin_aleksei', 'admin_ilja'])
           | list
         }}
       no_log: true

@@ -1,0 +1,61 @@
+---
+- name: Stop SeaweedFS sync on passive storage
+  ansible.builtin.systemd:
+    name: seaweed-sync
+    enabled: false
+    state: stopped
+  when: inventory_hostname == seaweed_passive_host
+  failed_when: false
+
+- name: Remove SeaweedFS sync service from passive storage
+  ansible.builtin.file:
+    path: /etc/systemd/system/seaweed-sync.service
+    state: absent
+  when: inventory_hostname == seaweed_passive_host
+
+- name: Configure SeaweedFS sync on active storage
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/seaweed-sync.service
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=SeaweedFS Sync {{ seaweed_active_host }} To {{ seaweed_passive_host }}
+      After=network-online.target seaweed-filer.service
+      Wants=network-online.target
+
+      [Service]
+      User={{ seaweed_admin_user }}
+      Group={{ seaweed_admin_user }}
+      ExecStart=/usr/local/bin/weed filer.sync -a={{ hostvars[seaweed_active_host].ansible_host }}:8888 -b={{ hostvars[seaweed_passive_host].ansible_host }}:8888 -isActivePassive -a.filerProxy -b.filerProxy
+      Restart=always
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+  when: inventory_hostname == seaweed_active_host
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Start SeaweedFS sync on active storage
+  ansible.builtin.systemd:
+    name: seaweed-sync
+    enabled: true
+    state: restarted
+  when: inventory_hostname == seaweed_active_host
+
+- name: Check SeaweedFS sync status on active storage
+  ansible.builtin.command: systemctl is-active seaweed-sync
+  register: seaweed_sync_status
+  changed_when: false
+  when: inventory_hostname == seaweed_active_host
+
+- name: Show active SeaweedFS sync direction
+  ansible.builtin.debug:
+    msg: "SeaweedFS sync is active: {{ seaweed_active_host }} -> {{ seaweed_passive_host }}"
+  when:
+    - inventory_hostname == seaweed_active_host
+    - seaweed_sync_status.stdout == "active"
