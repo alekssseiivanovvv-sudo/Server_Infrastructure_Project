@@ -1,6 +1,6 @@
 # Server_Infrastructure_Project
 
-<img width="1957" height="1770" alt="Infra drawio (1)" src="https://github.com/user-attachments/assets/f3e24871-01f5-46d4-84a8-11f1bf54e46f" />
+<img width="1957" height="1771" alt="Infra drawio(1)" src="https://github.com/user-attachments/assets/df616b4f-747e-4a99-8bf7-d725ea8e5714" />
 
 Repository for ours distributed server infrastructure project.
 
