@@ -120,7 +120,7 @@
 
 
 - name: Create monitoring
-  hosts: host_2
+  hosts: host_1
   become: true
   gather_facts: false
 
