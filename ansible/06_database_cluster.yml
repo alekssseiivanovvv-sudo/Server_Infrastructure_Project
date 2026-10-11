@@ -30,6 +30,7 @@
         content: |
           ETCD_NAME="{{ etcd_name }}"
           ETCD_DATA_DIR="{{ etcd_data_dir }}"
+          ETCD_ENABLE_V2="true"
           ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:{{ etcd_client_port }}"
           ETCD_ADVERTISE_CLIENT_URLS="http://{{ ansible_host }}:{{ etcd_client_port }}"
           ETCD_LISTEN_PEER_URLS="http://{{ ansible_host }}:{{ etcd_peer_port }}"
@@ -95,6 +96,7 @@
           - postgresql-contrib
           - patroni
           - python3-psycopg2
+          - python3-etcd
           - python3-etcd3gw
           - curl
         state: present
@@ -133,8 +135,8 @@
       ansible.builtin.copy:
         dest: /etc/patroni/config.yml
         owner: root
-        group: root
-        mode: "0600"
+        group: postgres
+        mode: "0640"
         content: |
           scope: {{ patroni_cluster_name }}
           namespace: /service/
@@ -144,7 +146,7 @@
             listen: {{ ansible_host }}:{{ patroni_rest_port }}
             connect_address: {{ ansible_host }}:{{ patroni_rest_port }}
 
-          etcd3:
+          etcd:
             host: {{ patroni_etcd_host }}:2379
 
           bootstrap:
