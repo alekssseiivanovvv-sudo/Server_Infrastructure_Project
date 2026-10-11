@@ -240,6 +240,20 @@
       delay: 5
       until: patroni_primary_check.status == 200
 
+    - name: Create or update application database user
+      ansible.builtin.shell: |
+        set -eu
+        export PGPASSWORD={{ vault_postgres_superuser_password | quote }}
+        psql -h {{ ansible_host }} -U postgres -v ON_ERROR_STOP=1 \
+          -v app_user={{ postgres_app_user | quote }} \
+          -v app_password={{ vault_postgres_app_password | quote }} <<'SQL'
+        SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'app_user', :'app_password')
+        WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'app_user') \gexec
+        SELECT format('ALTER ROLE %I WITH LOGIN PASSWORD %L', :'app_user', :'app_password') \gexec
+        SQL
+      no_log: true
+      changed_when: false
+
     - name: Create application database
       ansible.builtin.shell: |
         set -eu
