@@ -1,0 +1,11 @@
+version: 1
+config:
+  - type: physical
+    name: eth0
+    mac_address: "{{ vm_mac }}"
+    subnets:
+      - type: static
+        address: {{ vm_ip }}
+        netmask: 255.255.255.224
+        gateway: {{ vm_gateway }}
+        dns_nameservers: [1.1.1.1, 9.9.9.9]

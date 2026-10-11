@@ -1,0 +1,9 @@
+[storage_servers]
+east_storage_test ansible_host=192.168.72.10
+cloud_storage_test ansible_host=192.168.74.10
+
+[storage_servers:vars]
+ansible_port={{ vault_ssh_port }}
+
+[hypervisor_hosts]
+host_1 ansible_host=100.64.0.10
