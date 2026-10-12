@@ -76,6 +76,51 @@
     - "{{ seaweed_data_dir }}/volume"
     - "{{ seaweed_data_dir }}/filer"
 
+- name: Create SeaweedFS S3 config directory
+  ansible.builtin.file:
+    path: "{{ seaweed_s3_config_dir }}"
+    state: directory
+    owner: root
+    group: "{{ seaweed_admin_user }}"
+    mode: "0750"
+  when: seaweed_s3_config_file is defined
+
+- name: Configure SeaweedFS S3 credentials
+  ansible.builtin.copy:
+    dest: "{{ seaweed_s3_config_file }}"
+    owner: root
+    group: "{{ seaweed_admin_user }}"
+    mode: "0640"
+    content: |
+      {
+        "identities": [
+          {
+            "name": "shop-app",
+            "credentials": [
+              {
+                "accessKey": "{{ vault_shop_seaweed_access_key }}",
+                "secretKey": "{{ vault_shop_seaweed_secret_key }}"
+              }
+            ],
+            "actions": [
+              "Admin",
+              "Read",
+              "Write",
+              "List",
+              "Tagging"
+            ],
+            "resources": [
+              "buckets/product-images",
+              "buckets/product-images/*"
+            ]
+          }
+        ]
+      }
+  when: seaweed_s3_config_file is defined
+  no_log: true
+  notify:
+    - Restart SeaweedFS
+
 - name: Configure SeaweedFS master service
   ansible.builtin.template:
     src: seaweed-master.service.j2
