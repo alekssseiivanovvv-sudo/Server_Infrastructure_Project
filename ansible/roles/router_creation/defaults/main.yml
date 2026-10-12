@@ -5,6 +5,7 @@ router_disk_size_bytes: 2147483648
 # VM resources
 router_memory_mb: 512
 router_vcpus: 1
+router_swap_size_mb: 512
 
 # Libvirt networks
 router_wan_network: default

@@ -10,22 +10,20 @@ west_db ansible_host=192.168.73.3
 east_storage ansible_host=192.168.72.4
 west_storage ansible_host=192.168.73.4
 
+[s3_servers]
+cloud_s3 ansible_host=192.168.74.6
+
 [seaweed_master_servers]
-east_storage
-west_storage
-cloud_quorum
+cloud_s3
 
 [seaweed_volume_servers]
-east_storage
-west_storage
+cloud_s3
 
 [seaweed_filer_servers]
-east_storage
-west_storage
+cloud_s3
 
 [seaweed_s3_servers]
-east_storage
-west_storage
+cloud_s3
 
 [balance_servers]
 load_balancer ansible_host=192.168.74.4
@@ -68,6 +66,7 @@ cloud_router
 load_balancer
 monitoring
 cloud_quorum
+cloud_s3
 
 [infrastructure:children]
 east
@@ -78,6 +77,7 @@ cloud
 web_servers
 db_servers
 fs_servers
+s3_servers
 balance_servers
 monitoring_servers
 quorum_servers

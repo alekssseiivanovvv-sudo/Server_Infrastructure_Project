@@ -43,6 +43,24 @@ write_files:
       KbdInteractiveAuthentication no
 
 runcmd:
+  - |
+      set -eu
+
+      SWAP_MB={{ vm_swap_size_mb | default(2048) }}
+
+      if [ "$SWAP_MB" -gt 0 ] && [ ! -f /swapfile ]; then
+        fallocate -l "${SWAP_MB}M" /swapfile || dd if=/dev/zero of=/swapfile bs=1M count="$SWAP_MB"
+        chmod 600 /swapfile
+        mkswap /swapfile
+      fi
+
+      if [ -f /swapfile ]; then
+        if ! grep -q '^/swapfile ' /etc/fstab; then
+          echo '/swapfile none swap sw 0 0' >> /etc/fstab
+        fi
+        swapon --show=NAME | grep -qx /swapfile || swapon /swapfile
+      fi
+
 {% if vm_name in ['east_storage', 'west_storage'] %}
   - |
       set -eu

@@ -127,16 +127,20 @@
     owner: root
     group: root
     mode: "0644"
-  when: inventory_hostname == seaweed_primary_host
+  when:
+    - seaweed_enable_sync | default(false) | bool
+    - inventory_hostname == (seaweed_primary_host | default(''))
   notify:
     - Reload systemd
     - Restart SeaweedFS sync
 
-- name: Remove SeaweedFS sync service from passive node
+- name: Remove SeaweedFS sync service when sync is disabled or node is passive
   ansible.builtin.file:
     path: /etc/systemd/system/seaweed-sync.service
     state: absent
-  when: inventory_hostname != seaweed_primary_host
+  when: >-
+    not (seaweed_enable_sync | default(false) | bool)
+    or inventory_hostname != (seaweed_primary_host | default(''))
   notify: Reload systemd
 
 - name: Enable and start SeaweedFS services
@@ -157,15 +161,19 @@
     enabled: true
     state: started
     daemon_reload: true
-  when: inventory_hostname == seaweed_primary_host
+  when:
+    - seaweed_enable_sync | default(false) | bool
+    - inventory_hostname == (seaweed_primary_host | default(''))
 
-- name: Disable SeaweedFS sync on passive node
+- name: Disable SeaweedFS sync when sync is disabled or node is passive
   ansible.builtin.systemd:
     name: seaweed-sync
     enabled: false
     state: stopped
     daemon_reload: true
-  when: inventory_hostname != seaweed_primary_host
+  when: >-
+    not (seaweed_enable_sync | default(false) | bool)
+    or inventory_hostname != (seaweed_primary_host | default(''))
   failed_when: false
 
 - name: Check SeaweedFS version

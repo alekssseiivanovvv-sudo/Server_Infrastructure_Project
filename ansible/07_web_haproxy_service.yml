@@ -14,7 +14,7 @@
     shop_db_name: shopdb
     shop_db_user: appuser
     shop_s3_bucket: product-images
-    shop_seaweed_endpoint: "http://192.168.72.4:8333"
+    shop_seaweed_endpoint: "http://192.168.74.6:8333"
 
   tasks:
     - name: Check that web workers are Alpine
@@ -144,7 +144,7 @@
           DB_USER={{ shop_db_user }}
           DB_PASS={{ vault_postgres_app_password }}
 
-                    SEAWEED_ENDPOINT={{ shop_seaweed_endpoint }}
+          SEAWEED_ENDPOINT={{ shop_seaweed_endpoint }}
           SEAWEED_ACCESS_KEY={{ vault_shop_seaweed_access_key }}
           SEAWEED_SECRET_KEY={{ vault_shop_seaweed_secret_key }}
           SEAWEED_BUCKET={{ shop_s3_bucket }}

@@ -1,6 +1,6 @@
 ---
 - name: Install and configure SeaweedFS storage
-  hosts: seaweed_master_servers
+  hosts: s3_servers
   become: true
   gather_facts: true
 
@@ -10,9 +10,8 @@
   vars:
     seaweedfs_version: "4.48"
     seaweed_admin_user: seaweed_sysuser
-    seaweed_primary_host: east_storage
-    seaweed_secondary_host: west_storage
-    seaweed_data_dir: /srv/storage/seaweed
+    seaweed_enable_sync: false
+    seaweed_data_dir: /srv/seaweedfs
     seaweed_volume_max: 20
     seaweed_s3_config_dir: /etc/seaweedfs
     seaweed_s3_config_file: /etc/seaweedfs/s3.json

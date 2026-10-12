@@ -126,6 +126,7 @@ packages:
   - openssh
   - sudo
   - python3
+  - util-linux
   - nftables
   - nftables-openrc
   - tailscale
@@ -134,6 +135,21 @@ packages:
 runcmd:
   - |
       set -eu
+
+      SWAP_MB={{ router_swap_size_mb }}
+
+      if [ "$SWAP_MB" -gt 0 ] && [ ! -f /swapfile ]; then
+        dd if=/dev/zero of=/swapfile bs=1M count="$SWAP_MB"
+        chmod 600 /swapfile
+        mkswap /swapfile
+      fi
+
+      if [ -f /swapfile ]; then
+        if ! grep -q '^/swapfile ' /etc/fstab; then
+          echo '/swapfile none swap sw 0 0' >> /etc/fstab
+        fi
+        swapon --show=NAME | grep -qx /swapfile || swapon /swapfile
+      fi
 
       # Включить маршрутизацию.
       rc-update add sysctl boot

@@ -119,6 +119,31 @@
     - vm_creation
 
 
+- name: Create cloud_s3
+  hosts: host_1
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    vm_name: cloud_s3
+    vm_os: ubuntu
+    vm_ip: 192.168.74.6
+    vm_gateway: 192.168.74.1
+    vm_memory: 3072
+    vm_cpus: 1
+    vm_disk_size: 40G
+    vm_swap_size_mb: 4096
+    vm_mac: "52:54:00:74:06:01"
+    vm_image: "/mnt/a400/ISO/ubuntu-26.04-server-cloudimg-amd64.img"
+    vm_directory: "/mnt/p5+/KVM/cloud_s3"
+
+  roles:
+    - vm_creation
+
+
 - name: Create monitoring
   hosts: host_1
   become: true

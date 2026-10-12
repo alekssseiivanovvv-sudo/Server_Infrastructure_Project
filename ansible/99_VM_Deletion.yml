@@ -19,6 +19,8 @@
         directory: "/mnt/p5+/KVM/load_balancer"
       - name: cloud_quorum
         directory: "/mnt/p5+/KVM/cloud_quorum"
+      - name: cloud_s3
+        directory: "/mnt/p5+/KVM/cloud_s3"
       - name: monitoring
         directory: "/mnt/p5+/KVM/monitoring"
 
