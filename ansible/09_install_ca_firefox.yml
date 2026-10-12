@@ -6,7 +6,7 @@
 
   vars:
     ca_nickname: "Project Internal Root CA"
-    ca_crt_src: "{{ playbook_dir }}/generated/certs/project-root-ca.crt"
+    ca_crt_src: "/home/ansible_admin/project-certs/project-root-ca.crt"
     ca_crt_dest: /usr/local/share/ca-certificates/project-root-ca.crt
 
   tasks:

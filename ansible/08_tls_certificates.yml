@@ -5,7 +5,7 @@
   gather_facts: false
 
   vars:
-    cert_dir: "{{ playbook_dir }}/generated/certs"
+    cert_dir: "/home/ansible_admin/project-certs"
     ca_key: "{{ cert_dir }}/project-root-ca.key"
     ca_crt: "{{ cert_dir }}/project-root-ca.crt"
     haproxy_key: "{{ cert_dir }}/haproxy.key"
@@ -120,7 +120,7 @@
     - group_vars/group/all/vault.yml
 
   vars:
-    cert_dir: "{{ playbook_dir }}/generated/certs"
+    cert_dir: "/home/ansible_admin/project-certs"
 
   tasks:
     - name: Install HAProxy
