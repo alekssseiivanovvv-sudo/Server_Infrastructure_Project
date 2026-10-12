@@ -36,7 +36,7 @@
     vm_os: ubuntu
     vm_ip: 192.168.72.3
     vm_gateway: 192.168.72.1
-    vm_memory: 4096
+    vm_memory: 3072
     vm_cpus: 2
     vm_disk_size: 30G
     vm_mac: "52:54:00:72:03:01"
@@ -60,7 +60,7 @@
     vm_os: ubuntu
     vm_ip: 192.168.72.4
     vm_gateway: 192.168.72.1
-    vm_memory: 4096
+    vm_memory: 3072
     vm_cpus: 2
     vm_disk_size: 20G
     vm_mac: "52:54:00:72:04:01"
@@ -185,7 +185,7 @@
     vm_os: ubuntu
     vm_ip: 192.168.73.3
     vm_gateway: 192.168.73.1
-    vm_memory: 4096
+    vm_memory: 3072
     vm_cpus: 2
     vm_disk_size: 30G
     vm_mac: "52:54:00:73:03:01"
@@ -211,7 +211,7 @@
     vm_os: ubuntu
     vm_ip: 192.168.73.4
     vm_gateway: 192.168.73.1
-    vm_memory: 4096
+    vm_memory: 3072
     vm_cpus: 2
     vm_disk_size: 20G
     vm_mac: "52:54:00:73:04:01"

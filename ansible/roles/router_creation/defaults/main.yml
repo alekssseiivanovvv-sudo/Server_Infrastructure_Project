@@ -3,7 +3,7 @@
 router_disk_size_bytes: 2147483648
 
 # VM resources
-router_memory_mb: 1024
+router_memory_mb: 512
 router_vcpus: 1
 
 # Libvirt networks
