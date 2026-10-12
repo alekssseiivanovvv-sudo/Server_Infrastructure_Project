@@ -1,9 +1,0 @@
----
-- name: Storage switch is not used with cloud S3
-  hosts: localhost
-  gather_facts: false
-
-  tasks:
-    - name: Show current storage design
-      ansible.builtin.debug:
-        msg: "Cloud S3 is the only S3 endpoint now. East/west SeaweedFS switching is no longer required."
