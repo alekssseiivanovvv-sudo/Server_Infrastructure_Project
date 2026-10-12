@@ -47,7 +47,7 @@
 
     - name: Copy shop web project
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../TEST/shop-web/"
+        src: "{{ playbook_dir }}/../files/shop-web/"
         dest: "{{ shop_web_dir }}/"
         owner: root
         group: root

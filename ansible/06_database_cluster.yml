@@ -218,8 +218,8 @@
         daemon_reload: true
 
 
-- name: Create application database on current primary
-  hosts: east_db
+- name: Create application database on current Patroni primary
+  hosts: patroni_servers
   become: true
   gather_facts: false
 
@@ -231,16 +231,21 @@
     postgres_app_user: appuser
 
   tasks:
-    - name: Wait for Patroni primary API
+    - name: Check Patroni primary API on this node
       ansible.builtin.uri:
         url: "http://{{ ansible_host }}:8008/primary"
-        status_code: 200
+        status_code:
+          - 200
+          - 503
       register: patroni_primary_check
-      retries: 30
-      delay: 5
-      until: patroni_primary_check.status == 200
+      failed_when: false
+      changed_when: false
 
-    - name: Create or update application database user
+    - name: Mark current PostgreSQL primary
+      ansible.builtin.set_fact:
+        is_postgres_primary: "{{ patroni_primary_check.status | default(0) | int == 200 }}"
+
+    - name: Create or update application database user on primary
       ansible.builtin.shell: |
         set -eu
         export PGPASSWORD={{ vault_postgres_superuser_password | quote }}
@@ -249,38 +254,55 @@
           -v app_password={{ vault_postgres_app_password | quote }} <<'SQL'
         SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'app_user', :'app_password')
         WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'app_user') \gexec
+
         SELECT format('ALTER ROLE %I WITH LOGIN PASSWORD %L', :'app_user', :'app_password') \gexec
         SQL
+      when: is_postgres_primary
       no_log: true
       changed_when: false
 
-    - name: Create application database
+    - name: Create application database on primary
       ansible.builtin.shell: |
         set -eu
         export PGPASSWORD={{ vault_postgres_superuser_password | quote }}
-        if ! psql -h {{ ansible_host }} -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname='{{ postgres_app_database }}'" | grep -q 1; then
-          createdb -h {{ ansible_host }} -U postgres -O "{{ postgres_app_user }}" "{{ postgres_app_database }}"
-        fi
+        psql -h {{ ansible_host }} -U postgres -v ON_ERROR_STOP=1 \
+          -v db_name={{ postgres_app_database | quote }} \
+          -v app_user={{ postgres_app_user | quote }} <<'SQL'
+        SELECT format('CREATE DATABASE %I OWNER %I', :'db_name', :'app_user')
+        WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'db_name') \gexec
+
+        SELECT format('ALTER DATABASE %I OWNER TO %I', :'db_name', :'app_user') \gexec
+        SELECT format('GRANT CONNECT ON DATABASE %I TO %I', :'db_name', :'app_user') \gexec
+        SQL
+      when: is_postgres_primary
       no_log: true
       changed_when: false
 
-    - name: Create products table for test shop database
+    - name: Configure application table and permissions on primary
       ansible.builtin.shell: |
         set -eu
         export PGPASSWORD={{ vault_postgres_superuser_password | quote }}
-        psql -h {{ ansible_host }} -U postgres -d "{{ postgres_app_database }}" <<'SQL'
-        CREATE TABLE IF NOT EXISTS products (
+        psql -h {{ ansible_host }} -U postgres -d "{{ postgres_app_database }}" -v ON_ERROR_STOP=1 \
+          -v app_user={{ postgres_app_user | quote }} <<'SQL'
+        CREATE TABLE IF NOT EXISTS public.products (
           id SERIAL PRIMARY KEY,
           name VARCHAR(255) NOT NULL,
           price NUMERIC(10, 2) NOT NULL,
           stock INTEGER NOT NULL DEFAULT 0,
           image_key VARCHAR(512)
         );
-        ALTER TABLE public.products OWNER TO {{ postgres_app_user }};
-        ALTER SEQUENCE IF EXISTS products_id_seq OWNER TO {{ postgres_app_user }};
-        GRANT ALL PRIVILEGES ON TABLE public.products TO {{ postgres_app_user }};
-        GRANT USAGE, SELECT, UPDATE ON SEQUENCE products_id_seq TO {{ postgres_app_user }};
+
+        SELECT format('ALTER TABLE public.products OWNER TO %I', :'app_user') \gexec
+        SELECT format('ALTER SEQUENCE IF EXISTS public.products_id_seq OWNER TO %I', :'app_user') \gexec
+
+        SELECT format('GRANT USAGE, CREATE ON SCHEMA public TO %I', :'app_user') \gexec
+        SELECT format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.products TO %I', :'app_user') \gexec
+        SELECT format('GRANT USAGE, SELECT, UPDATE ON SEQUENCE public.products_id_seq TO %I', :'app_user') \gexec
+
+        SELECT format('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO %I', :'app_user') \gexec
+        SELECT format('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO %I', :'app_user') \gexec
         SQL
+      when: is_postgres_primary
       no_log: true
       changed_when: false
 
