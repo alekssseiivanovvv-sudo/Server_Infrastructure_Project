@@ -19,7 +19,7 @@ DB_PORT = int(os.getenv('DB_PORT', '5432'))
 SEAWEED_ENDPOINT = os.getenv('SEAWEED_ENDPOINT')
 SEAWEED_ACCESS_KEY = os.getenv('SEAWEED_ACCESS_KEY', 'any')
 SEAWEED_SECRET_KEY = os.getenv('SEAWEED_SECRET_KEY', 'any')
-SEAWEED_BUCKET = os.getenv('SEAWEE_BUCKET', 'product-images')
+SEAWEED_BUCKET = os.getenv('SEAWEED_BUCKET', 'product-images')
 
 def get_db():
     return psycopg2.connect(
