@@ -1,0 +1,63 @@
+---
+- name: Install internal CA into host Firefox browsers
+  hosts: hypervisor_hosts
+  become: true
+  gather_facts: true
+
+  vars:
+    ca_nickname: "Project Internal Root CA"
+    ca_crt_src: "{{ playbook_dir }}/generated/certs/project-root-ca.crt"
+    ca_crt_dest: /usr/local/share/ca-certificates/project-root-ca.crt
+
+  tasks:
+    - name: Install Firefox certificate tools
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - libnss3-tools
+        state: present
+        update_cache: true
+      when: ansible_facts.os_family == "Debian"
+
+    - name: Copy CA certificate to system trust directory
+      ansible.builtin.copy:
+        src: "{{ ca_crt_src }}"
+        dest: "{{ ca_crt_dest }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Update system CA trust
+      ansible.builtin.command: update-ca-certificates
+      changed_when: false
+      when: ansible_facts.os_family == "Debian"
+
+    - name: Add project domain names to hosts file
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '.*shop\.project\.local.*'
+        line: "192.168.74.4 shop.project.local load-balancer.project.local"
+        state: present
+
+    - name: Find Firefox profiles
+      become_user: "{{ hardware_admin_user }}"
+      ansible.builtin.shell: |
+        set -eu
+        for base in "$HOME/.mozilla/firefox" "$HOME/snap/firefox/common/.mozilla/firefox"; do
+          if [ -d "$base" ]; then
+            find "$base" -maxdepth 1 -type d \( -name "*.default*" -o -name "*.default-release*" \)
+          fi
+        done
+      register: firefox_profiles
+      changed_when: false
+      failed_when: false
+
+    - name: Import CA into Firefox profiles
+      become_user: "{{ hardware_admin_user }}"
+      ansible.builtin.shell: |
+        set -eu
+        profile_db="sql:{{ item }}"
+        certutil -D -d "$profile_db" -n "{{ ca_nickname }}" >/dev/null 2>&1 || true
+        certutil -A -d "$profile_db" -n "{{ ca_nickname }}" -t "C,," -i "{{ ca_crt_dest }}"
+      loop: "{{ firefox_profiles.stdout_lines }}"
+      when: firefox_profiles.stdout_lines | length > 0

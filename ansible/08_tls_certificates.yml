@@ -1,0 +1,220 @@
+---
+- name: Generate internal CA and HAProxy certificate
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    cert_dir: "{{ playbook_dir }}/generated/certs"
+    ca_key: "{{ cert_dir }}/project-root-ca.key"
+    ca_crt: "{{ cert_dir }}/project-root-ca.crt"
+    haproxy_key: "{{ cert_dir }}/haproxy.key"
+    haproxy_csr: "{{ cert_dir }}/haproxy.csr"
+    haproxy_crt: "{{ cert_dir }}/haproxy.crt"
+    haproxy_ext: "{{ cert_dir }}/haproxy.ext"
+    haproxy_pem: "{{ cert_dir }}/haproxy.pem"
+
+  tasks:
+    - name: Create certificate directory
+      ansible.builtin.file:
+        path: "{{ cert_dir }}"
+        state: directory
+        mode: "0700"
+
+    - name: Generate internal CA private key
+      ansible.builtin.command:
+        argv: [openssl, genrsa, -out, "{{ ca_key }}", "4096"]
+        creates: "{{ ca_key }}"
+
+    - name: Generate internal CA certificate
+      ansible.builtin.command:
+        argv:
+          - openssl
+          - req
+          - -x509
+          - -new
+          - -nodes
+          - -key
+          - "{{ ca_key }}"
+          - -sha256
+          - -days
+          - "3650"
+          - -out
+          - "{{ ca_crt }}"
+          - -subj
+          - "/CN=Project Internal Root CA"
+        creates: "{{ ca_crt }}"
+
+    - name: Generate HAProxy private key
+      ansible.builtin.command:
+        argv: [openssl, genrsa, -out, "{{ haproxy_key }}", "2048"]
+        creates: "{{ haproxy_key }}"
+
+    - name: Generate HAProxy CSR
+      ansible.builtin.command:
+        argv:
+          - openssl
+          - req
+          - -new
+          - -key
+          - "{{ haproxy_key }}"
+          - -out
+          - "{{ haproxy_csr }}"
+          - -subj
+          - "/CN=shop.project.local"
+        creates: "{{ haproxy_csr }}"
+
+    - name: Create HAProxy certificate extension file
+      ansible.builtin.copy:
+        dest: "{{ haproxy_ext }}"
+        mode: "0600"
+        content: |
+          authorityKeyIdentifier=keyid,issuer
+          basicConstraints=CA:FALSE
+          keyUsage=digitalSignature,keyEncipherment
+          extendedKeyUsage=serverAuth
+          subjectAltName=@alt_names
+
+          [alt_names]
+          DNS.1=shop.project.local
+          DNS.2=load-balancer.project.local
+          IP.1=192.168.74.4
+
+    - name: Sign HAProxy certificate
+      ansible.builtin.command:
+        argv:
+          - openssl
+          - x509
+          - -req
+          - -in
+          - "{{ haproxy_csr }}"
+          - -CA
+          - "{{ ca_crt }}"
+          - -CAkey
+          - "{{ ca_key }}"
+          - -CAcreateserial
+          - -out
+          - "{{ haproxy_crt }}"
+          - -days
+          - "825"
+          - -sha256
+          - -extfile
+          - "{{ haproxy_ext }}"
+        creates: "{{ haproxy_crt }}"
+
+    - name: Build HAProxy PEM file
+      ansible.builtin.copy:
+        dest: "{{ haproxy_pem }}"
+        mode: "0600"
+        content: |
+          {{ lookup('file', haproxy_crt) }}
+          {{ lookup('file', haproxy_key) }}
+
+
+- name: Install TLS certificate on HAProxy
+  hosts: balance_servers
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    cert_dir: "{{ playbook_dir }}/generated/certs"
+
+  tasks:
+    - name: Install HAProxy
+      ansible.builtin.apk:
+        name:
+          - haproxy
+          - curl
+        state: present
+        update_cache: true
+
+    - name: Create HAProxy certificate directory
+      ansible.builtin.file:
+        path: /etc/haproxy/certs
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Copy HAProxy PEM certificate
+      ansible.builtin.copy:
+        src: "{{ cert_dir }}/haproxy.pem"
+        dest: /etc/haproxy/certs/haproxy.pem
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: Configure HAProxy with HTTPS
+      ansible.builtin.copy:
+        dest: /etc/haproxy/haproxy.cfg
+        owner: root
+        group: root
+        mode: "0644"
+        validate: "haproxy -c -f %s"
+        content: |
+          global
+              log /dev/log local0
+              log /dev/log local1 notice
+              maxconn 4096
+              user haproxy
+              group haproxy
+              daemon
+
+          defaults
+              log global
+              option dontlognull
+              timeout connect 5s
+              timeout client 30s
+              timeout server 30s
+
+          frontend http_front
+              bind *:80
+              mode http
+              redirect scheme https code 301
+
+          frontend https_front
+              bind *:443 ssl crt /etc/haproxy/certs/haproxy.pem
+              mode http
+              option httplog
+              option forwardfor
+              default_backend nginx_servers
+
+          backend nginx_servers
+              mode http
+              balance roundrobin
+              option httpchk GET /health
+              http-check expect status 200
+              server nginx_east 192.168.72.2:80 check inter 3s fall 3 rise 2
+              server nginx_west 192.168.73.2:80 check inter 3s fall 3 rise 2
+
+          listen stats
+              bind *:8404
+              mode http
+              stats enable
+              stats uri /stats
+              stats refresh 5s
+              stats auth {{ vault_haproxy_stats_user }}:{{ vault_haproxy_stats_password }}
+
+          frontend postgres_front
+              bind *:5000
+              mode tcp
+              option tcplog
+              default_backend postgres_primary
+
+          backend postgres_primary
+              mode tcp
+              option httpchk GET /primary
+              http-check expect status 200
+              default-server inter 2s fall 3 rise 2 on-marked-down shutdown-sessions
+              server pg_east 192.168.72.3:5432 check port 8008
+              server pg_west 192.168.73.3:5432 check port 8008
+      no_log: true
+
+    - name: Enable and restart HAProxy
+      ansible.builtin.service:
+        name: haproxy
+        enabled: true
+        state: restarted
