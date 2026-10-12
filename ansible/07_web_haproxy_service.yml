@@ -53,17 +53,6 @@
         group: root
         mode: preserve
 
-    - name: Add backend health endpoint
-      ansible.builtin.blockinfile:
-        path: "{{ shop_web_dir }}/backend/app.py"
-        marker: "# {mark} ANSIBLE MANAGED HEALTH ENDPOINT"
-        insertbefore: "^if __name__ == '__main__':"
-        block: |
-
-          @app.route('/health')
-          def health():
-              return jsonify({"status": "ok"}), 200
-
     - name: Configure NGINX for shop web
       ansible.builtin.copy:
         dest: "{{ shop_web_dir }}/nginx/nginx.conf"
