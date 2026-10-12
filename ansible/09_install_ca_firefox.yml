@@ -40,24 +40,20 @@
         state: present
 
     - name: Find Firefox profiles
-      become_user: "{{ hardware_admin_user }}"
       ansible.builtin.shell: |
         set -eu
-        for base in "$HOME/.mozilla/firefox" "$HOME/snap/firefox/common/.mozilla/firefox"; do
-          if [ -d "$base" ]; then
-            find "$base" -maxdepth 1 -type d \( -name "*.default*" -o -name "*.default-release*" \)
-          fi
-        done
+        find /home -type f -name cert9.db 2>/dev/null | sed 's#/cert9.db##'
       register: firefox_profiles
       changed_when: false
       failed_when: false
 
     - name: Import CA into Firefox profiles
-      become_user: "{{ hardware_admin_user }}"
       ansible.builtin.shell: |
         set -eu
         profile_db="sql:{{ item }}"
-        certutil -D -d "$profile_db" -n "{{ ca_nickname }}" >/dev/null 2>&1 || true
-        certutil -A -d "$profile_db" -n "{{ ca_nickname }}" -t "C,," -i "{{ ca_crt_dest }}"
+        profile_user="$(stat -c '%U' '{{ item }}')"
+
+        sudo -u "$profile_user" certutil -D -d "$profile_db" -n "{{ ca_nickname }}" >/dev/null 2>&1 || true
+        sudo -u "$profile_user" certutil -A -d "$profile_db" -n "{{ ca_nickname }}" -t "C,," -i "{{ ca_crt_dest }}"
       loop: "{{ firefox_profiles.stdout_lines }}"
       when: firefox_profiles.stdout_lines | length > 0
