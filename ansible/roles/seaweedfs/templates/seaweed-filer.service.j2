@@ -7,7 +7,7 @@ Requires=seaweed-master.service seaweed-volume.service
 [Service]
 User={{ seaweed_admin_user }}
 Group={{ seaweed_admin_user }}
-ExecStart=/usr/local/bin/weed filer -master={{ ansible_host }}:9333 -ip={{ ansible_host }} -port=8888 -dir={{ seaweed_data_dir }}/filer
+ExecStart=/usr/local/bin/weed filer -master={{ ansible_host }}:9333 -ip={{ ansible_host }} -port=8888 -defaultStoreDir={{ seaweed_data_dir }}/filer
 Restart=always
 RestartSec=5
 
