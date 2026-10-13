@@ -3,8 +3,6 @@
   hosts: routers
   become: true
   gather_facts: false
-  vars_files:
-    - group_vars/group/all/vault.yml
 
   vars:
     ansible_port: "{{ vault_router_ssh_port }}"
@@ -110,16 +108,6 @@
       ansible.builtin.command: apk add --no-cache dnsmasq
       when: dnsmasq_installed.rc != 0
 
-    - name: Configure router resolver to use local dnsmasq
-      ansible.builtin.copy:
-        dest: /etc/resolv.conf
-        owner: root
-        group: root
-        mode: "0644"
-        content: |
-          search {{ project_dns_domain }}
-          nameserver 127.0.0.1
-
     - name: Configure dnsmasq
       ansible.builtin.copy:
         dest: /etc/dnsmasq.conf
@@ -147,6 +135,25 @@
           {% for record in project_dns_records %}
           host-record={{ ([record.name] + record.aliases) | join(',') }},{{ record.ip }}
           {% endfor %}
+
+    - name: Prevent dhcpcd from overwriting router resolver
+      ansible.builtin.lineinfile:
+        path: /etc/dhcpcd.conf
+        line: nohook resolv.conf
+        create: true
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Configure router resolver to use local dnsmasq
+      ansible.builtin.copy:
+        dest: /etc/resolv.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          search {{ project_dns_domain }}
+          nameserver 127.0.0.1
 
     - name: Check dnsmasq configuration
       ansible.builtin.command: dnsmasq --test
