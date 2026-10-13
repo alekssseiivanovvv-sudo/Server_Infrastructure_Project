@@ -1,0 +1,17 @@
+---
+grafana_provisioning_dir: /etc/grafana/provisioning
+grafana_dashboards_dir: /var/lib/grafana/dashboards
+
+grafana_dashboards:
+  - name: "node-exporter-full"
+    id: 1860
+    datasource: "Prometheus"
+  - name: "postgresql"
+    id: 9628
+    datasource: "Prometheus"
+  - name: "docker-cadvisor"
+    id: 14282
+    datasource: "Prometheus"
+  - name: "loki-logs"
+    id: 24978
+    datasource: "Loki"

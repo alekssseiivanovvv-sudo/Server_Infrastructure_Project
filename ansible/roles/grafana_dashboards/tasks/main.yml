@@ -1,0 +1,56 @@
+---
+- name: Ensure provisioning directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: grafana
+    group: grafana
+    mode: '0755'
+  loop:
+    - "{{ grafana_provisioning_dir }}/datasources"
+    - "{{ grafana_provisioning_dir }}/dashboards"
+    - "{{ grafana_dashboards_dir }}"
+
+- name: Deploy datasource provisioning config
+  ansible.builtin.template:
+    src: datasources.yml.j2
+    dest: "{{ grafana_provisioning_dir }}/datasources/ansible.yml"
+    owner: grafana
+    group: grafana
+    mode: '0640'
+  notify: Restart Grafana
+
+- name: Deploy dashboard provider config
+  ansible.builtin.template:
+    src: dashboards.yml.j2
+    dest: "{{ grafana_provisioning_dir }}/dashboards/ansible.yml"
+    owner: grafana
+    group: grafana
+    mode: '0640'
+  notify: Restart Grafana
+
+- name: Download dashboards from grafana.com
+  ansible.builtin.get_url:
+    url: "https://grafana.com/api/dashboards/{{ item.id }}/revisions/1/download"
+    dest: "/tmp/{{ item.name }}.json"
+    mode: '0644'
+  loop: "{{ grafana_dashboards }}"
+  register: downloaded
+
+- name: Replace datasource placeholders
+  ansible.builtin.replace:
+    path: "/tmp/{{ item.item.name }}.json"
+    regexp: '\$\{DS_[A-Z0-9_-]+\}'
+    replace: "{{ item.item.datasource }}"
+  loop: "{{ downloaded.results }}"
+  when: item.changed
+
+- name: Copy dashboards into provisioning directory
+  ansible.builtin.copy:
+    src: "/tmp/{{ item.name }}.json"
+    dest: "{{ grafana_dashboards_dir }}/{{ item.name }}.json"
+    owner: grafana
+    group: grafana
+    mode: '0644'
+  loop: "{{ grafana_dashboards }}"
+  notify: Restart Grafana
