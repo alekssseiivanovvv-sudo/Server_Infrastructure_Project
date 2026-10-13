@@ -1,0 +1,145 @@
+---
+- name: Configure DNS on project routers
+  hosts: routers
+  become: true
+  gather_facts: false
+
+  vars:
+    router_dns_bind_ip:
+      east_router: 192.168.72.1
+      west_router: 192.168.73.1
+      cloud_router: 192.168.74.1
+
+    project_dns_domain: project.local
+
+    project_dns_upstream_servers:
+      - 1.1.1.1
+      - 9.9.9.9
+
+    project_dns_records:
+      - name: east-router.project.local
+        aliases:
+          - east-router
+        ip: 192.168.72.1
+
+      - name: east-web.project.local
+        aliases:
+          - east-web
+        ip: 192.168.72.2
+
+      - name: east-db.project.local
+        aliases:
+          - east-db
+        ip: 192.168.72.3
+
+      - name: west-router.project.local
+        aliases:
+          - west-router
+        ip: 192.168.73.1
+
+      - name: west-web.project.local
+        aliases:
+          - west-web
+        ip: 192.168.73.2
+
+      - name: west-db.project.local
+        aliases:
+          - west-db
+        ip: 192.168.73.3
+
+      - name: cloud-router.project.local
+        aliases:
+          - cloud-router
+        ip: 192.168.74.1
+
+      - name: load-balancer.project.local
+        aliases:
+          - load-balancer
+          - lb
+          - shop
+        ip: 192.168.74.2
+
+      - name: shop.project.local
+        aliases: []
+        ip: 192.168.74.2
+
+      - name: monitoring.project.local
+        aliases:
+          - monitoring
+          - grafana
+          - prometheus
+          - loki
+        ip: 192.168.74.3
+
+      - name: grafana.project.local
+        aliases: []
+        ip: 192.168.74.3
+
+      - name: prometheus.project.local
+        aliases: []
+        ip: 192.168.74.3
+
+      - name: loki.project.local
+        aliases: []
+        ip: 192.168.74.3
+
+      - name: cloud-quorum.project.local
+        aliases:
+          - cloud-quorum
+          - quorum
+        ip: 192.168.74.5
+
+      - name: cloud-s3.project.local
+        aliases:
+          - cloud-s3
+          - s3
+        ip: 192.168.74.6
+
+  tasks:
+    - name: Check if dnsmasq is installed
+      ansible.builtin.command: apk info -e dnsmasq
+      register: dnsmasq_installed
+      changed_when: false
+      failed_when: false
+
+    - name: Install dnsmasq
+      ansible.builtin.command: apk add --no-cache dnsmasq
+      when: dnsmasq_installed.rc != 0
+
+    - name: Configure dnsmasq
+      ansible.builtin.copy:
+        dest: /etc/dnsmasq.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          domain-needed
+          bogus-priv
+          expand-hosts
+          domain={{ project_dns_domain }}
+          local=/{{ project_dns_domain }}/
+
+          listen-address=127.0.0.1
+          listen-address={{ router_dns_bind_ip[inventory_hostname] }}
+          bind-interfaces
+
+          no-resolv
+          {% for dns_server in project_dns_upstream_servers %}
+          server={{ dns_server }}
+          {% endfor %}
+
+          cache-size=1000
+
+          {% for record in project_dns_records %}
+          host-record={{ ([record.name] + record.aliases) | join(',') }},{{ record.ip }}
+          {% endfor %}
+
+    - name: Check dnsmasq configuration
+      ansible.builtin.command: dnsmasq --test
+      changed_when: false
+
+    - name: Restart dnsmasq
+      ansible.builtin.service:
+        name: dnsmasq
+        state: restarted
+        enabled: true
