@@ -12,21 +12,20 @@ Aleksei:
 - Networking and security
 - Infrastructure deployment
 - Automation with Ansible
+- Seaweed FS configuration
 
 Ilja:
 
-- Monitoring configuration
-- NGINX configuration
-- PostgreSQL configuration, DB engineering
+- Monitoring, Logging & Alerting configuration
+- Docker container creation & configuration
+- NGINX & HAproxy configuration
+- DB design
 - Python Backend programming
 - HTML website Frontend programming and design
-- Seaweed FS configuration
-- Docker container creation & configuration
 
 Contains:
 - Ansible
 - Ansible Vault (encrypted)
-- Terraform
 - Cloud-init & VMs configurations
 - Docker container files
 - Database files
