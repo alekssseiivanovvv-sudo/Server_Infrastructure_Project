@@ -31,7 +31,7 @@
     state: present
   no_log: true
 
-- name: Install SSH client on Debian or Ubuntu backup source
+- name: Install SSH client on Ubuntu backup source
   ansible.builtin.apt:
     name: openssh-client
     state: present
@@ -39,7 +39,7 @@
     cache_valid_time: 3600
   when:
     - backup_ssh_mode == "source"
-    - ansible_facts.os_family == "Debian"
+    - ansible_facts.distribution == "Ubuntu"
 
 - name: Install SSH client on Alpine backup source
   ansible.builtin.apk:
@@ -110,7 +110,7 @@
       - -t
       - ed25519
       - -p
-      - "{{ hostvars[item].ansible_port | default(22) }}"
+      - "{{ backup_ssh_storage_port }}"
       - "{{ hostvars[item].ansible_host | default(item) }}"
   register: backup_ssh_storage_keyscan
   changed_when: false
@@ -122,8 +122,8 @@
     path: "/home/{{ backup_ssh_restic_user }}/.ssh/known_hosts"
     name: >-
       {{
-        '[' ~ (hostvars[item.item].ansible_host | default(item.item)) ~ ']:' ~ (hostvars[item.item].ansible_port | default(22))
-        if (hostvars[item.item].ansible_port | default(22) | string) != '22'
+        '[' ~ (hostvars[item.item].ansible_host | default(item.item)) ~ ']:' ~ backup_ssh_storage_port
+        if (backup_ssh_storage_port | string) != '22'
         else (hostvars[item.item].ansible_host | default(item.item))
       }}
     key: "{{ item.stdout }}"

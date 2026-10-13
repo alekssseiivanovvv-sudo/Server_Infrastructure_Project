@@ -25,7 +25,7 @@
         calendar: "{{ '*-*-* 03:10:00' if inventory_hostname == 'east_storage' else '*-*-* 02:10:00' }}"
 
   tasks:
-    - name: Check PostgreSQL backup Vault variables
+    - name: Check backup Vault variables
       ansible.builtin.assert:
         that:
           - vault_postgres_superuser_password is defined
@@ -33,7 +33,7 @@
         fail_msg: Add vault_postgres_superuser_password and vault_restic_repository_password to group_vars/group/all/vault.yml.
       no_log: true
 
-    - name: Install PostgreSQL backup packages on Debian or Ubuntu
+    - name: Install backup packages on Ubuntu
       ansible.builtin.apt:
         name:
           - restic
@@ -41,9 +41,9 @@
         state: present
         update_cache: true
         cache_valid_time: 3600
-      when: ansible_facts.os_family == "Debian"
+      when: ansible_facts.distribution == "Ubuntu"
 
-    - name: Install PostgreSQL backup packages on Alpine
+    - name: Install backup packages on Alpine
       ansible.builtin.apk:
         name:
           - restic
@@ -77,7 +77,7 @@
         mode: "0750"
       loop: "{{ backup_postgres_jobs }}"
 
-    - name: Create PostgreSQL backup environment file
+    - name: Create backup environment file
       ansible.builtin.copy:
         dest: "{{ backup_config_dir }}/db-backup.env"
         owner: root
@@ -180,7 +180,7 @@
           WantedBy=timers.target
       loop: "{{ backup_postgres_jobs }}"
 
-    - name: Reload systemd after PostgreSQL backup changes
+    - name: Reload systemd
       ansible.builtin.systemd:
         daemon_reload: true
 
@@ -197,245 +197,3 @@
         state: started
       loop: "{{ backup_postgres_jobs }}"
       when: backup_run_now | bool
-
-
-- name: Configure automation node backups to branch backup nodes
-  hosts: automation_nodes
-  become: true
-  gather_facts: true
-
-  vars_files:
-    - group_vars/group/all/vault.yml
-
-  vars:
-    backup_restic_user: restic_sysuser
-    backup_config_dir: /etc/project-backup
-    automation_backup_name: automation_node
-    automation_backup_run_now: false
-    automation_backup_calendar: "*-*-* 01:30:00"
-    automation_backup_paths:
-      - /home/ansible_admin/Server_Infrastructure_Project
-      - /home/ansible_admin/.ssh
-      - /home/ansible_admin/.bashrc
-      - /home/ansible_admin/.profile
-      - /home/ansible_admin/.bash_aliases
-      - /home/ansible_admin/.gitconfig
-      - /etc/hosts
-    automation_backup_excludes:
-      - /home/ansible_admin/.ansible/tmp
-      - /home/ansible_admin/.cache
-      - /home/ansible_admin/.local/share/Trash
-      - "**/__pycache__"
-      - "**/.git/objects/pack/tmp_*"
-
-  tasks:
-    - name: Check automation backup Vault variables
-      ansible.builtin.assert:
-        that:
-          - vault_restic_repository_password is defined
-        fail_msg: Add vault_restic_repository_password to group_vars/group/all/vault.yml.
-      no_log: true
-
-    - name: Install automation backup packages on Debian or Ubuntu
-      ansible.builtin.apt:
-        name:
-          - restic
-          - openssh-client
-        state: present
-        update_cache: true
-        cache_valid_time: 3600
-      when: ansible_facts.os_family == "Debian"
-
-    - name: Install automation backup packages on Alpine
-      ansible.builtin.apk:
-        name:
-          - restic
-          - openssh-client
-        state: present
-        update_cache: true
-      when: ansible_facts.distribution == "Alpine"
-
-    - name: Create automation backup config directory
-      ansible.builtin.file:
-        path: "{{ backup_config_dir }}"
-        state: directory
-        owner: root
-        group: "{{ backup_restic_user }}"
-        mode: "0750"
-
-    - name: Create Restic cache directory for automation backup
-      ansible.builtin.file:
-        path: /var/cache/restic/automation-node
-        state: directory
-        owner: root
-        group: root
-        mode: "0700"
-
-    - name: Create automation backup environment file
-      ansible.builtin.copy:
-        dest: "{{ backup_config_dir }}/automation-backup.env"
-        owner: root
-        group: "{{ backup_restic_user }}"
-        mode: "0640"
-        content: |
-          RESTIC_PASSWORD={{ vault_restic_repository_password | to_json }}
-      no_log: true
-
-    - name: Create automation backup path list
-      ansible.builtin.copy:
-        dest: "{{ backup_config_dir }}/automation-backup-paths.txt"
-        owner: root
-        group: "{{ backup_restic_user }}"
-        mode: "0640"
-        content: |
-          {% for path in automation_backup_paths %}
-          {{ path }}
-          {% endfor %}
-
-    - name: Create automation backup exclude list
-      ansible.builtin.copy:
-        dest: "{{ backup_config_dir }}/automation-backup-excludes.txt"
-        owner: root
-        group: "{{ backup_restic_user }}"
-        mode: "0640"
-        content: |
-          {% for path in automation_backup_excludes %}
-          {{ path }}
-          {% endfor %}
-
-    - name: Create automation backup repository list
-      ansible.builtin.copy:
-        dest: "{{ backup_config_dir }}/automation-backup-repos.txt"
-        owner: root
-        group: "{{ backup_restic_user }}"
-        mode: "0640"
-        content: |
-          {% for host in groups['backup_storage_servers'] | default([]) %}
-          sftp://{{ backup_restic_user }}@{{ hostvars[host].ansible_host | default(host) }}:{{ hostvars[host].ansible_port | default(22) }}//srv/restic-repos/{{ automation_backup_name }}
-          {% endfor %}
-
-    - name: Install automation Restic backup script
-      ansible.builtin.copy:
-        dest: /usr/local/sbin/project-automation-restic-backup.sh
-        owner: root
-        group: root
-        mode: "0755"
-        content: |
-          #!/bin/sh
-          set -eu
-
-          : "${RESTIC_PASSWORD:?RESTIC_PASSWORD is not set}"
-          export HOME="/home/{{ backup_restic_user }}"
-          export RESTIC_CACHE_DIR="/var/cache/restic/automation-node"
-          export RESTIC_PASSWORD
-
-          path_source="{{ backup_config_dir }}/automation-backup-paths.txt"
-          exclude_source="{{ backup_config_dir }}/automation-backup-excludes.txt"
-          repo_source="{{ backup_config_dir }}/automation-backup-repos.txt"
-          existing_paths="$(mktemp)"
-
-          cleanup() {
-            rm -f "${existing_paths}"
-          }
-          trap cleanup EXIT
-
-          while IFS= read -r path; do
-            [ -n "${path}" ] || continue
-            [ -e "${path}" ] || continue
-            printf '%s\n' "${path}" >> "${existing_paths}"
-          done < "${path_source}"
-
-          if [ ! -s "${existing_paths}" ]; then
-            echo "No automation backup paths exist on this node."
-            exit 1
-          fi
-
-          success=0
-          while IFS= read -r repo; do
-            [ -n "${repo}" ] || continue
-
-            echo "Backing up automation node to ${repo}"
-
-            if (
-              set -e
-
-              if ! restic -r "${repo}" snapshots >/dev/null 2>&1; then
-                restic -r "${repo}" init
-              fi
-
-              restic -r "${repo}" backup \
-                --files-from "${existing_paths}" \
-                --exclude-file "${exclude_source}" \
-                --tag automation-node \
-                --host "{{ automation_backup_name }}"
-
-              restic -r "${repo}" forget \
-                --keep-daily 7 \
-                --keep-weekly 4 \
-                --keep-monthly 3 \
-                --prune
-            ); then
-              success=1
-            else
-              echo "Backup failed for ${repo}" >&2
-            fi
-          done < "${repo_source}"
-
-          if [ "${success}" -ne 1 ]; then
-            echo "Automation backup failed for every repository." >&2
-            exit 1
-          fi
-
-    - name: Create automation backup service
-      ansible.builtin.copy:
-        dest: /etc/systemd/system/project-automation-backup.service
-        owner: root
-        group: root
-        mode: "0644"
-        content: |
-          [Unit]
-          Description=Project automation node backup
-          Wants=network-online.target
-          After=network-online.target
-
-          [Service]
-          Type=oneshot
-          EnvironmentFile={{ backup_config_dir }}/automation-backup.env
-          ExecStart=/usr/local/sbin/project-automation-restic-backup.sh
-          Nice=10
-          IOSchedulingClass=best-effort
-          IOSchedulingPriority=7
-
-    - name: Create automation backup timer
-      ansible.builtin.copy:
-        dest: /etc/systemd/system/project-automation-backup.timer
-        owner: root
-        group: root
-        mode: "0644"
-        content: |
-          [Unit]
-          Description=Run project automation node backup
-
-          [Timer]
-          OnCalendar={{ automation_backup_calendar }}
-          Persistent=true
-          RandomizedDelaySec=15m
-
-          [Install]
-          WantedBy=timers.target
-
-    - name: Reload systemd after automation backup changes
-      ansible.builtin.systemd:
-        daemon_reload: true
-
-    - name: Enable automation backup timer
-      ansible.builtin.systemd:
-        name: project-automation-backup.timer
-        enabled: true
-        state: started
-
-    - name: Run automation backup now
-      ansible.builtin.systemd:
-        name: project-automation-backup.service
-        state: started
-      when: automation_backup_run_now | bool
