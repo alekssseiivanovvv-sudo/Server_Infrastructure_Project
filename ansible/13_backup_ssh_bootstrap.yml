@@ -1,0 +1,30 @@
+---
+- name: Bootstrap Restic SSH on backup source servers
+  hosts: backup_source_servers
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    backup_ssh_mode: source
+
+  roles:
+    - backup_ssh_bootstrap
+
+
+- name: Bootstrap Restic SSH on backup storage servers
+  hosts: backup_storage_servers
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    backup_ssh_mode: storage
+
+  roles:
+    - backup_ssh_bootstrap
+

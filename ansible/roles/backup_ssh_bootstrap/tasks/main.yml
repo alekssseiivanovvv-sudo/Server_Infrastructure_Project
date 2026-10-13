@@ -1,0 +1,184 @@
+---
+- name: Check backup SSH bootstrap mode
+  ansible.builtin.assert:
+    that:
+      - backup_ssh_mode in ["source", "storage"]
+    fail_msg: "backup_ssh_mode must be source or storage."
+
+- name: Select Restic system user from Vault
+  ansible.builtin.set_fact:
+    backup_ssh_selected_restic_users: >-
+      {{
+        backup_ssh_user_source
+        | selectattr('name', 'equalto', backup_ssh_restic_user)
+        | list
+      }}
+  no_log: true
+
+- name: Check Restic system user configuration
+  ansible.builtin.assert:
+    that:
+      - backup_ssh_selected_restic_users | length == 1
+    fail_msg: "Vault must contain exactly one {{ backup_ssh_restic_user }} account in vault_admin_users."
+
+- name: Create Restic system user
+  ansible.builtin.user:
+    name: "{{ backup_ssh_restic_user }}"
+    password: "{{ backup_ssh_selected_restic_users[0].password_hash }}"
+    update_password: always
+    shell: "{{ '/bin/ash' if ansible_facts.distribution == 'Alpine' else '/bin/bash' }}"
+    create_home: true
+    state: present
+  no_log: true
+
+- name: Install SSH client on Ubuntu backup source
+  ansible.builtin.apt:
+    name: openssh-client
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when:
+    - backup_ssh_mode == "source"
+    - ansible_facts.distribution == "Ubuntu"
+
+- name: Install SSH client on Alpine backup source
+  ansible.builtin.apk:
+    name: openssh-client
+    state: present
+    update_cache: true
+  when:
+    - backup_ssh_mode == "source"
+    - ansible_facts.distribution == "Alpine"
+
+- name: Create Restic SSH directory
+  ansible.builtin.file:
+    path: "/home/{{ backup_ssh_restic_user }}/.ssh"
+    state: directory
+    owner: "{{ backup_ssh_restic_user }}"
+    group: "{{ backup_ssh_restic_user }}"
+    mode: "0700"
+
+- name: Generate Restic SSH key on backup source
+  ansible.builtin.command:
+    argv:
+      - ssh-keygen
+      - -q
+      - -t
+      - ed25519
+      - -f
+      - "{{ backup_ssh_restic_key_path }}"
+      - -N
+      - ""
+      - -C
+      - "{{ inventory_hostname }}-restic-backup"
+    creates: "{{ backup_ssh_restic_key_path }}"
+  become_user: "{{ backup_ssh_restic_user }}"
+  when: backup_ssh_mode == "source"
+
+- name: Set Restic private key permissions
+  ansible.builtin.file:
+    path: "{{ backup_ssh_restic_key_path }}"
+    owner: "{{ backup_ssh_restic_user }}"
+    group: "{{ backup_ssh_restic_user }}"
+    mode: "0600"
+  when: backup_ssh_mode == "source"
+
+- name: Set Restic public key permissions
+  ansible.builtin.file:
+    path: "{{ backup_ssh_restic_key_path }}.pub"
+    owner: "{{ backup_ssh_restic_user }}"
+    group: "{{ backup_ssh_restic_user }}"
+    mode: "0644"
+  when: backup_ssh_mode == "source"
+
+- name: Read Restic public key from backup source
+  ansible.builtin.slurp:
+    src: "{{ backup_ssh_restic_key_path }}.pub"
+  register: backup_ssh_public_key_file
+  no_log: true
+  when: backup_ssh_mode == "source"
+
+- name: Store Restic public key for storage nodes
+  ansible.builtin.set_fact:
+    backup_ssh_public_key: "{{ backup_ssh_public_key_file.content | b64decode | trim }}"
+  no_log: true
+  when: backup_ssh_mode == "source"
+
+- name: Scan backup storage SSH host keys from backup source
+  ansible.builtin.command:
+    argv:
+      - ssh-keyscan
+      - -t
+      - ed25519
+      - -p
+      - "{{ hostvars[item].ansible_port | default(22) }}"
+      - "{{ hostvars[item].ansible_host | default(item) }}"
+  register: backup_ssh_storage_keyscan
+  changed_when: false
+  loop: "{{ backup_ssh_storage_hosts }}"
+  when: backup_ssh_mode == "source"
+
+- name: Add backup storage hosts to Restic known_hosts
+  ansible.builtin.known_hosts:
+    path: "/home/{{ backup_ssh_restic_user }}/.ssh/known_hosts"
+    name: >-
+      {{
+        '[' ~ (hostvars[item.item].ansible_host | default(item.item)) ~ ']:' ~ (hostvars[item.item].ansible_port | default(22))
+        if (hostvars[item.item].ansible_port | default(22) | string) != '22'
+        else (hostvars[item.item].ansible_host | default(item.item))
+      }}
+    key: "{{ item.stdout }}"
+    state: present
+  loop: "{{ backup_ssh_storage_keyscan.results | default([]) }}"
+  when:
+    - backup_ssh_mode == "source"
+    - item.stdout is defined
+    - item.stdout | length > 0
+
+- name: Set Restic known_hosts permissions
+  ansible.builtin.file:
+    path: "/home/{{ backup_ssh_restic_user }}/.ssh/known_hosts"
+    owner: "{{ backup_ssh_restic_user }}"
+    group: "{{ backup_ssh_restic_user }}"
+    mode: "0644"
+  when: backup_ssh_mode == "source"
+
+- name: Check backup source public keys before configuring storage
+  ansible.builtin.assert:
+    that:
+      - hostvars[item].backup_ssh_public_key is defined
+    fail_msg: "Missing Restic public key from {{ item }}. Run the source bootstrap play first."
+  loop: "{{ backup_ssh_source_hosts }}"
+  when: backup_ssh_mode == "storage"
+
+- name: Create Restic repository root on storage node
+  ansible.builtin.file:
+    path: "{{ backup_ssh_repo_root }}"
+    state: directory
+    owner: "{{ backup_ssh_restic_user }}"
+    group: "{{ backup_ssh_restic_user }}"
+    mode: "0750"
+  when: backup_ssh_mode == "storage"
+
+- name: Create per-source Restic repository directories on storage node
+  ansible.builtin.file:
+    path: "{{ backup_ssh_repo_root }}/{{ item }}"
+    state: directory
+    owner: "{{ backup_ssh_restic_user }}"
+    group: "{{ backup_ssh_restic_user }}"
+    mode: "0750"
+  loop: "{{ backup_ssh_source_hosts }}"
+  when: backup_ssh_mode == "storage"
+
+- name: Add backup source public keys to storage Restic user
+  ansible.posix.authorized_key:
+    user: "{{ backup_ssh_restic_user }}"
+    key: "{{ hostvars[item].backup_ssh_public_key }}"
+    state: present
+    manage_dir: true
+  loop: "{{ backup_ssh_source_hosts }}"
+  when:
+    - backup_ssh_mode == "storage"
+    - hostvars[item].backup_ssh_public_key is defined
+  no_log: true
+

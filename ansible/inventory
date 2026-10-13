@@ -13,6 +13,9 @@ west_storage ansible_host=192.168.73.4
 [s3_servers]
 cloud_s3 ansible_host=192.168.74.6
 
+[automation_nodes]
+automation_node ansible_connection=local
+
 [seaweed_master_servers]
 cloud_s3
 
@@ -97,6 +100,14 @@ quorum_servers
 
 [linux_servers:vars]
 ansible_port={{ vault_ssh_port }}
+
+[backup_source_servers:children]
+db_servers
+s3_servers
+automation_nodes
+
+[backup_storage_servers:children]
+fs_servers
 
 [hypervisor_hosts]
 host_1 ansible_host=100.64.0.10
