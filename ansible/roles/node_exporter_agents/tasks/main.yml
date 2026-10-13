@@ -1,0 +1,56 @@
+---
+- name: Check supported Node Exporter OS
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.distribution in ["Alpine", "Ubuntu"]
+    fail_msg: "Node Exporter playbook supports Alpine and Ubuntu hosts."
+
+- name: Install Node Exporter on Alpine
+  ansible.builtin.apk:
+    name: prometheus-node-exporter
+    state: present
+    update_cache: true
+  when: ansible_facts.distribution == "Alpine"
+
+- name: Configure Node Exporter OpenRC service on Alpine
+  ansible.builtin.copy:
+    dest: /etc/init.d/node_exporter
+    owner: root
+    group: root
+    mode: "0755"
+    content: |
+      #!/sbin/openrc-run
+
+      name="Node Exporter"
+      description="Prometheus Node Exporter"
+      command="/usr/bin/node_exporter"
+      command_background="yes"
+      pidfile="/run/node_exporter.pid"
+
+      depend() {
+        need net
+        after firewall
+      }
+  when: ansible_facts.distribution == "Alpine"
+
+- name: Enable and start Node Exporter on Alpine
+  ansible.builtin.service:
+    name: node_exporter
+    enabled: true
+    state: started
+  when: ansible_facts.distribution == "Alpine"
+
+- name: Install Node Exporter on Ubuntu
+  ansible.builtin.apt:
+    name: prometheus-node-exporter
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_facts.distribution == "Ubuntu"
+
+- name: Enable and start Node Exporter on Ubuntu
+  ansible.builtin.systemd:
+    name: prometheus-node-exporter
+    enabled: true
+    state: started
+  when: ansible_facts.distribution == "Ubuntu"

@@ -11,6 +11,8 @@
     prometheus_version: "3.5.0"
     prometheus_admin_user: prometheus_sysuser
     loki_version: "3.5.1"
+    grafana_admin_user: admin
+    grafana_admin_password: "{{ vault_grafana_admin_password }}"
     grafana_dashboard_source_dir: "{{ playbook_dir }}/files/grafana/dashboards"
     grafana_home_dashboard_path: /var/lib/grafana/dashboards/project/project-overview.json
 

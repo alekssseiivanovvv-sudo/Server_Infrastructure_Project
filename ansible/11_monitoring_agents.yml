@@ -15,3 +15,15 @@
 
   roles:
     - monitoring_agents
+
+
+- name: Install Node Exporter monitoring agents
+  hosts: node_exporter_agents
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  roles:
+    - node_exporter_agents

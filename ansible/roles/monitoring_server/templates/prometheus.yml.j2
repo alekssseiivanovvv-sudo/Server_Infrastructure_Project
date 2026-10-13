@@ -7,3 +7,12 @@ scrape_configs:
     static_configs:
       - targets:
           - localhost:9090
+
+{% if groups['node_exporter_agents'] is defined %}
+  - job_name: node_exporter
+    static_configs:
+      - targets:
+{% for host in groups['node_exporter_agents'] %}
+          - {{ hostvars[host].ansible_host }}:9100
+{% endfor %}
+{% endif %}
