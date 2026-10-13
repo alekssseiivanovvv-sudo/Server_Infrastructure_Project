@@ -110,6 +110,16 @@
       ansible.builtin.command: apk add --no-cache dnsmasq
       when: dnsmasq_installed.rc != 0
 
+    - name: Configure router resolver to use local dnsmasq
+      ansible.builtin.copy:
+        dest: /etc/resolv.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          search {{ project_dns_domain }}
+          nameserver 127.0.0.1
+
     - name: Configure dnsmasq
       ansible.builtin.copy:
         dest: /etc/dnsmasq.conf
