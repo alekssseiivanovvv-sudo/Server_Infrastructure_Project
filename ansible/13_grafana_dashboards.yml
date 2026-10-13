@@ -1,0 +1,6 @@
+---
+- name: Deploy Grafana dashboards and datasources
+  hosts: monitoring
+  become: true
+  roles:
+    - grafana_dashboards
