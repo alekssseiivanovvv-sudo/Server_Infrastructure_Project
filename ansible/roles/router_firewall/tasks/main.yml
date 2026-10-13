@@ -1,0 +1,62 @@
+---
+- name: Check supported router OS
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.distribution == "Alpine"
+    fail_msg: "Router firewall playbook supports only Alpine routers."
+
+- name: Check router firewall variables
+  ansible.builtin.assert:
+    that:
+      - router_firewall_ssh_port is defined
+      - router_firewall_lan_addresses[inventory_hostname] is defined
+      - router_firewall_lan_subnets[inventory_hostname] is defined
+      - router_firewall_project_subnets | length > 0
+    fail_msg: "Router firewall variables are incomplete for this router."
+
+- name: Install nftables
+  ansible.builtin.apk:
+    name:
+      - nftables
+      - nftables-openrc
+    state: present
+    update_cache: true
+
+- name: Enable IPv4 forwarding
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-router.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      net.ipv4.ip_forward = 1
+  notify: Apply router sysctl
+
+- name: Apply IPv4 forwarding immediately
+  ansible.builtin.command: sysctl -p /etc/sysctl.d/99-router.conf
+  changed_when: false
+
+- name: Configure nftables rules
+  ansible.builtin.template:
+    src: nftables.nft.j2
+    dest: /etc/nftables.nft
+    owner: root
+    group: root
+    mode: "0600"
+    validate: nft -c -f %s
+  notify: Restart nftables
+
+- name: Enable and start nftables
+  ansible.builtin.service:
+    name: nftables
+    enabled: true
+    state: started
+
+- name: Show router firewall summary
+  ansible.builtin.debug:
+    msg:
+      - "Firewall installed on {{ inventory_hostname }}."
+      - "LAN {{ router_firewall_lan_subnets[inventory_hostname] }} is routed through {{ router_firewall_lan_interface }}."
+      - "SSH is allowed only through {{ router_firewall_tailscale_interface }} on port {{ router_firewall_ssh_port }}."
+      - "DNS is allowed from LAN clients to {{ router_firewall_lan_addresses[inventory_hostname] }}."
+      - "Node Exporter port 9100 is allowed from project LANs and Tailscale."

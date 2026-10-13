@@ -1,0 +1,9 @@
+---
+- name: Apply router sysctl
+  ansible.builtin.command: sysctl -p /etc/sysctl.d/99-router.conf
+  changed_when: false
+
+- name: Restart nftables
+  ansible.builtin.service:
+    name: nftables
+    state: restarted

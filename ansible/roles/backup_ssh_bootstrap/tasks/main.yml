@@ -31,7 +31,7 @@
     state: present
   no_log: true
 
-- name: Install SSH client on Ubuntu backup source
+- name: Install SSH client on Debian or Ubuntu backup source
   ansible.builtin.apt:
     name: openssh-client
     state: present
@@ -39,7 +39,7 @@
     cache_valid_time: 3600
   when:
     - backup_ssh_mode == "source"
-    - ansible_facts.distribution == "Ubuntu"
+    - ansible_facts.os_family == "Debian"
 
 - name: Install SSH client on Alpine backup source
   ansible.builtin.apk:
