@@ -1,0 +1,109 @@
+---
+- name: Check supported monitoring agent OS
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.distribution in ["Alpine", "Ubuntu"]
+    fail_msg: "Alloy agent playbook supports Alpine and Ubuntu hosts."
+
+- name: Install Alloy on Alpine
+  ansible.builtin.apk:
+    name:
+      - alloy
+      - alloy-openrc
+      - shadow
+    state: present
+    update_cache: true
+  when: ansible_facts.distribution == "Alpine"
+
+- name: Add Alpine Alloy user to log and Docker groups
+  ansible.builtin.user:
+    name: alloy
+    groups: "{{ ['wheel'] + (['docker'] if alloy_docker_enabled | bool else []) }}"
+    append: true
+  when: ansible_facts.distribution == "Alpine"
+
+- name: Install Ubuntu Alloy repository dependencies
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+      - wget
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_facts.distribution == "Ubuntu"
+
+- name: Create Ubuntu apt keyring directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: ansible_facts.distribution == "Ubuntu"
+
+- name: Add Grafana apt key on Ubuntu
+  ansible.builtin.get_url:
+    url: https://apt.grafana.com/gpg-full.key
+    dest: /etc/apt/keyrings/grafana.asc
+    owner: root
+    group: root
+    mode: "0644"
+  when: ansible_facts.distribution == "Ubuntu"
+
+- name: Add Grafana apt repository on Ubuntu
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/grafana.list
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main
+  when: ansible_facts.distribution == "Ubuntu"
+
+- name: Install Alloy on Ubuntu
+  ansible.builtin.apt:
+    name: alloy
+    state: present
+    update_cache: true
+  when: ansible_facts.distribution == "Ubuntu"
+
+- name: Add Ubuntu Alloy user to log groups
+  ansible.builtin.user:
+    name: alloy
+    groups: "{{ ['adm', 'systemd-journal'] + (['docker'] if alloy_docker_enabled | bool else []) }}"
+    append: true
+  when: ansible_facts.distribution == "Ubuntu"
+
+- name: Create Alloy config directory
+  ansible.builtin.file:
+    path: /etc/alloy
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure Alloy
+  ansible.builtin.template:
+    src: config.alloy.j2
+    dest: /etc/alloy/config.alloy
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart alloy
+
+- name: Enable and start Alloy on Alpine
+  ansible.builtin.service:
+    name: alloy
+    enabled: true
+    state: started
+  when: ansible_facts.distribution == "Alpine"
+
+- name: Enable and start Alloy on Ubuntu
+  ansible.builtin.systemd:
+    name: alloy
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: ansible_facts.distribution == "Ubuntu"

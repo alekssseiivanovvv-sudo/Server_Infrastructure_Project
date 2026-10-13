@@ -1,0 +1,17 @@
+---
+- name: Install Alloy monitoring agents
+  hosts: alloy_agents
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    monitoring_server_ip: "{{ hostvars[groups['monitoring_servers'][0]].ansible_host }}"
+    alloy_prometheus_remote_write_url: "http://{{ monitoring_server_ip }}:9090/api/v1/write"
+    alloy_loki_push_url: "http://{{ monitoring_server_ip }}:3100/loki/api/v1/push"
+    alloy_docker_enabled: "{{ inventory_hostname in (groups['docker_servers'] | default([])) }}"
+
+  roles:
+    - monitoring_agents

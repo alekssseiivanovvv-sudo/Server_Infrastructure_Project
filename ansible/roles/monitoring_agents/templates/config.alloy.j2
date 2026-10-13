@@ -1,0 +1,75 @@
+prometheus.exporter.unix "local_system" {}
+
+prometheus.scrape "local_scrape" {
+  targets         = prometheus.exporter.unix.local_system.targets
+  forward_to      = [prometheus.remote_write.to_central_prometheus.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.remote_write "to_central_prometheus" {
+  endpoint {
+    url = "{{ alloy_prometheus_remote_write_url }}"
+  }
+}
+
+{% if ansible_facts.distribution == "Ubuntu" %}
+loki.source.journal "system_logs" {
+  forward_to = [loki.write.to_central_loki.receiver]
+  max_age    = "24h"
+  labels     = { job = "systemd-journal", host = constants.hostname }
+}
+
+loki.source.file "varlogs" {
+  targets = [
+    { __path__ = "/var/log/*.log", job = "varlogs", host = constants.hostname },
+  ]
+  forward_to = [loki.write.to_central_loki.receiver]
+}
+{% endif %}
+
+{% if ansible_facts.distribution == "Alpine" %}
+loki.source.file "system_logs" {
+  targets = [
+    { __path__ = "/var/log/messages", job = "syslog",  host = constants.hostname },
+    { __path__ = "/var/log/*.log",    job = "varlogs", host = constants.hostname },
+  ]
+  forward_to = [loki.write.to_central_loki.receiver]
+}
+{% endif %}
+
+{% if alloy_docker_enabled | bool %}
+prometheus.exporter.cadvisor "docker" {
+  docker_host      = "unix:///var/run/docker.sock"
+  storage_duration = "5m"
+}
+
+prometheus.scrape "docker_metrics" {
+  targets         = prometheus.exporter.cadvisor.docker.targets
+  forward_to      = [prometheus.remote_write.to_central_prometheus.receiver]
+  scrape_interval = "15s"
+}
+
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "docker_logs" {
+  targets = discovery.docker.containers.targets
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    target_label  = "container_name"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.docker_logs.output
+  forward_to = [loki.write.to_central_loki.receiver]
+}
+{% endif %}
+
+loki.write "to_central_loki" {
+  endpoint {
+    url = "{{ alloy_loki_push_url }}"
+  }
+}

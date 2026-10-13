@@ -1,0 +1,19 @@
+[Unit]
+Description=Prometheus monitoring server
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User={{ prometheus_admin_user }}
+Group={{ prometheus_admin_user }}
+Type=simple
+ExecStart=/usr/local/bin/prometheus \
+  --config.file=/etc/prometheus/prometheus.yml \
+  --storage.tsdb.path=/var/lib/prometheus \
+  --web.enable-lifecycle \
+  --web.enable-remote-write-receiver
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

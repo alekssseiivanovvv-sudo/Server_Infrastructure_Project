@@ -1,0 +1,296 @@
+---
+- name: Check monitoring server OS
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.distribution == "Ubuntu"
+    fail_msg: "Monitoring server must be Ubuntu."
+
+- name: Install monitoring stack dependencies
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - unzip
+      - wget
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Select Prometheus administrator from Vault
+  ansible.builtin.set_fact:
+    selected_prometheus_admin_users: "{{ vault_admin_users | selectattr('name', 'equalto', prometheus_admin_user) | list }}"
+  no_log: true
+
+- name: Check Prometheus administrator configuration
+  ansible.builtin.assert:
+    that:
+      - selected_prometheus_admin_users | length == 1
+    fail_msg: "Vault must contain exactly one {{ prometheus_admin_user }} account."
+
+- name: Create Prometheus administrator
+  ansible.builtin.user:
+    name: "{{ selected_prometheus_admin_users[0].name }}"
+    password: "{{ selected_prometheus_admin_users[0].password_hash }}"
+    update_password: always
+    shell: /bin/bash
+    create_home: true
+    state: present
+  no_log: true
+
+- name: Create Prometheus directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ prometheus_admin_user }}"
+    group: "{{ prometheus_admin_user }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - path: /etc/prometheus
+      mode: "0755"
+    - path: /var/lib/prometheus
+      mode: "0750"
+
+- name: Download Prometheus release archive
+  ansible.builtin.get_url:
+    url: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+    dest: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Extract Prometheus release archive
+  ansible.builtin.unarchive:
+    src: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+    dest: /tmp
+    remote_src: true
+    creates: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64/prometheus"
+
+- name: Install Prometheus binaries
+  ansible.builtin.copy:
+    src: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    owner: root
+    group: root
+    mode: "0755"
+    remote_src: true
+  loop:
+    - prometheus
+    - promtool
+  notify: Restart prometheus
+
+- name: Configure Prometheus
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: /etc/prometheus/prometheus.yml
+    owner: "{{ prometheus_admin_user }}"
+    group: "{{ prometheus_admin_user }}"
+    mode: "0644"
+    validate: /usr/local/bin/promtool check config %s
+  notify: Restart prometheus
+
+- name: Configure Prometheus systemd service
+  ansible.builtin.template:
+    src: prometheus.service.j2
+    dest: /etc/systemd/system/prometheus.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart prometheus
+
+- name: Create loki user
+  ansible.builtin.user:
+    name: loki
+    shell: /usr/sbin/nologin
+    system: true
+    create_home: false
+    state: present
+
+- name: Create Loki directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: loki
+    group: loki
+    mode: "{{ item.mode }}"
+  loop:
+    - path: /etc/loki
+      mode: "0755"
+    - path: /var/lib/loki
+      mode: "0750"
+    - path: /var/lib/loki/chunks
+      mode: "0750"
+    - path: /var/lib/loki/rules
+      mode: "0750"
+    - path: /var/lib/loki/compactor
+      mode: "0750"
+
+- name: Download Loki release archive
+  ansible.builtin.get_url:
+    url: "https://github.com/grafana/loki/releases/download/v{{ loki_version }}/loki-linux-amd64.zip"
+    dest: "/tmp/loki-linux-amd64-{{ loki_version }}.zip"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Extract Loki release archive
+  ansible.builtin.unarchive:
+    src: "/tmp/loki-linux-amd64-{{ loki_version }}.zip"
+    dest: /tmp
+    remote_src: true
+    creates: /tmp/loki-linux-amd64
+
+- name: Install Loki binary
+  ansible.builtin.copy:
+    src: /tmp/loki-linux-amd64
+    dest: /usr/local/bin/loki
+    owner: root
+    group: root
+    mode: "0755"
+    remote_src: true
+  notify: Restart loki
+
+- name: Configure Loki
+  ansible.builtin.template:
+    src: loki-config.yml.j2
+    dest: /etc/loki/config.yml
+    owner: loki
+    group: loki
+    mode: "0644"
+  notify: Restart loki
+
+- name: Configure Loki systemd service
+  ansible.builtin.template:
+    src: loki.service.j2
+    dest: /etc/systemd/system/loki.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart loki
+
+- name: Create apt keyring directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Add Grafana apt key
+  ansible.builtin.get_url:
+    url: https://apt.grafana.com/gpg-full.key
+    dest: /etc/apt/keyrings/grafana.asc
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Add Grafana apt repository
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/grafana.list
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main
+
+- name: Install Grafana OSS
+  ansible.builtin.apt:
+    name: grafana
+    state: present
+    update_cache: true
+
+- name: Set Grafana home dashboard
+  ansible.builtin.ini_file:
+    path: /etc/grafana/grafana.ini
+    section: dashboards
+    option: default_home_dashboard_path
+    value: "{{ grafana_home_dashboard_path }}"
+    owner: root
+    group: grafana
+    mode: "0640"
+    no_extra_spaces: true
+  notify: Restart grafana
+
+- name: Create Grafana provisioning directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: grafana
+    mode: "0755"
+  loop:
+    - /etc/grafana/provisioning/datasources
+    - /etc/grafana/provisioning/dashboards
+    - /var/lib/grafana/dashboards
+    - /var/lib/grafana/dashboards/project
+
+- name: Configure Grafana datasources
+  ansible.builtin.template:
+    src: grafana-datasources.yml.j2
+    dest: /etc/grafana/provisioning/datasources/project.yml
+    owner: root
+    group: grafana
+    mode: "0644"
+  notify: Restart grafana
+
+- name: Configure Grafana dashboard provider
+  ansible.builtin.template:
+    src: grafana-dashboards.yml.j2
+    dest: /etc/grafana/provisioning/dashboards/project.yml
+    owner: root
+    group: grafana
+    mode: "0644"
+  notify: Restart grafana
+
+- name: Copy Grafana project dashboards
+  ansible.builtin.copy:
+    src: "{{ grafana_dashboard_source_dir }}/"
+    dest: /var/lib/grafana/dashboards/project/
+    owner: root
+    group: grafana
+    mode: "0644"
+    directory_mode: "0755"
+  notify: Restart grafana
+
+- name: Enable and start monitoring services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop:
+    - prometheus
+    - loki
+    - grafana-server
+
+- name: Check Prometheus HTTP endpoint
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9090/-/ready
+    status_code: 200
+  register: prometheus_ready
+  retries: 12
+  delay: 5
+  until: prometheus_ready.status == 200
+
+- name: Check Loki HTTP endpoint
+  ansible.builtin.uri:
+    url: http://127.0.0.1:3100/ready
+    status_code: 200
+  register: loki_ready
+  retries: 12
+  delay: 5
+  until: loki_ready.status == 200
+
+- name: Check Grafana HTTP endpoint
+  ansible.builtin.uri:
+    url: http://127.0.0.1:3000/api/health
+    status_code: 200
+  register: grafana_ready
+  retries: 12
+  delay: 5
+  until: grafana_ready.status == 200
