@@ -1,4 +1,26 @@
 ---
+- name: Create project routers
+  ansible.builtin.import_playbook: 02_routers_creation.yml
+
+- name: Wait after router creation
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Wait for routers to finish booting
+      ansible.builtin.pause:
+        minutes: 1
+
+- name: Create project virtual machines
+  ansible.builtin.import_playbook: 03_vm_creation.yml
+
+- name: Wait after virtual machine creation
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Wait for virtual machines to finish booting
+      ansible.builtin.pause:
+        minutes: 1
+
 - name: Configure users
   ansible.builtin.import_playbook: 04_users.yml
 

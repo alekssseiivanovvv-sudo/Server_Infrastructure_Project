@@ -283,6 +283,9 @@
     directory_mode: "0755"
   notify: Restart grafana
 
+- name: Apply pending monitoring service handlers
+  ansible.builtin.meta: flush_handlers
+
 - name: Enable and start monitoring services
   ansible.builtin.systemd:
     name: "{{ item }}"
@@ -294,15 +297,51 @@
     - loki
     - grafana-server
 
-- name: Apply Grafana admin password to local database
+- name: Find Grafana CLI binary
+  ansible.builtin.shell: |
+    set -eu
+    if command -v grafana-cli >/dev/null 2>&1; then
+      command -v grafana-cli
+    elif command -v grafana >/dev/null 2>&1; then
+      command -v grafana
+    elif [ -x /usr/share/grafana/bin/grafana ]; then
+      printf '%s\n' /usr/share/grafana/bin/grafana
+    else
+      exit 1
+    fi
+  register: grafana_cli_binary
+  changed_when: false
+
+- name: Apply Grafana admin password with grafana-cli
   ansible.builtin.command:
     argv:
-      - grafana-cli
+      - "{{ grafana_cli_binary.stdout }}"
+      - --homepath
+      - /usr/share/grafana
+      - --config
+      - /etc/grafana/grafana.ini
       - admin
       - reset-admin-password
       - "{{ grafana_admin_password }}"
   changed_when: false
   no_log: true
+  when: grafana_cli_binary.stdout | basename == "grafana-cli"
+
+- name: Apply Grafana admin password with grafana binary
+  ansible.builtin.command:
+    argv:
+      - "{{ grafana_cli_binary.stdout }}"
+      - cli
+      - --homepath
+      - /usr/share/grafana
+      - --config
+      - /etc/grafana/grafana.ini
+      - admin
+      - reset-admin-password
+      - "{{ grafana_admin_password }}"
+  changed_when: false
+  no_log: true
+  when: grafana_cli_binary.stdout | basename != "grafana-cli"
 
 - name: Check Prometheus HTTP endpoint
   ansible.builtin.uri:
