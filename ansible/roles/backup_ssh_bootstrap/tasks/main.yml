@@ -72,7 +72,6 @@
       - -C
       - "{{ inventory_hostname }}-restic-backup"
     creates: "{{ backup_ssh_restic_key_path }}"
-  become_user: "{{ backup_ssh_restic_user }}"
   when: backup_ssh_mode == "source"
 
 - name: Set Restic private key permissions
