@@ -3,6 +3,8 @@
   hosts: routers
   become: true
   gather_facts: false
+  vars_files:
+    - group_vars/group/all/vault.yml
 
   vars:
     ansible_port: "{{ vault_router_ssh_port }}"
