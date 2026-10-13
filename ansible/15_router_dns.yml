@@ -5,6 +5,8 @@
   gather_facts: false
 
   vars:
+    ansible_port: "{{ vault_router_ssh_port }}"
+
     router_dns_bind_ip:
       east_router: 192.168.72.1
       west_router: 192.168.73.1
