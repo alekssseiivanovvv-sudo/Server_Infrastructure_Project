@@ -49,6 +49,7 @@
   ansible.builtin.copy:
     src: "/tmp/{{ item.name }}.json"
     dest: "{{ grafana_dashboards_dir }}/{{ item.name }}.json"
+    remote_src: true
     owner: grafana
     group: grafana
     mode: '0644'
