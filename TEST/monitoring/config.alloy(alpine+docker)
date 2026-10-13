@@ -1,0 +1,76 @@
+// =================================================================
+// ЧАСТЬ 1: СИСТЕМНЫЕ МЕТРИКИ
+// =================================================================
+
+prometheus.exporter.unix "local_system" {}
+
+prometheus.scrape "local_scrape" {
+  targets         = prometheus.exporter.unix.local_system.targets
+  forward_to      = [prometheus.remote_write.to_central_prometheus.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.remote_write "to_central_prometheus" {
+  endpoint {
+    url = "http://192.168.74.3:9090/api/v1/write"
+  }
+}
+
+// =================================================================
+// ЧАСТЬ 2: СИСТЕМНЫЕ ЛОГИ Alpine (/var/log/messages)
+// =================================================================
+
+loki.source.file "system_logs" {
+  targets = [
+    { __path__ = "/var/log/messages", job = "syslog",  host = constants.hostname },
+    { __path__ = "/var/log/*.log",    job = "varlogs", host = constants.hostname },
+  ]
+  forward_to = [loki.write.to_central_loki.receiver]
+}
+
+// =================================================================
+// ЧАСТЬ 3: DOCKER — МЕТРИКИ КОНТЕЙНЕРОВ
+// =================================================================
+
+prometheus.exporter.cadvisor "docker" {
+  docker_host      = "unix:///var/run/docker.sock"
+  storage_duration = "5m"
+}
+
+prometheus.scrape "docker_metrics" {
+  targets         = prometheus.exporter.cadvisor.docker.targets
+  forward_to      = [prometheus.remote_write.to_central_prometheus.receiver]
+  scrape_interval = "15s"
+}
+
+// =================================================================
+// ЧАСТЬ 4: DOCKER — ЛОГИ КОНТЕЙНЕРОВ
+// =================================================================
+
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "docker_logs" {
+  targets = discovery.docker.containers.targets
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    target_label  = "container_name"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.docker_logs.output
+  forward_to = [loki.write.to_central_loki.receiver]
+}
+
+// =================================================================
+// ЧАСТЬ 5: ОТПРАВКА ЛОГОВ В LOKI
+// =================================================================
+
+loki.write "to_central_loki" {
+  endpoint {
+    url = "http://192.168.74.3:3100/loki/api/v1/push"
+  }
+}
