@@ -42,6 +42,7 @@ balance_servers
 monitoring_servers
 quorum_servers
 routers
+fs_servers
 
 [docker_servers:children]
 web_servers
