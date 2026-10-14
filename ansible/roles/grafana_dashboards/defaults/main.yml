@@ -4,6 +4,42 @@ grafana_provisioning_dir: /etc/grafana/provisioning
 grafana_dashboards_dir: /var/lib/grafana/dashboards
 
 # Дашборды Alloy Mixin (скачиваются напрямую из GitHub)
+grafana_url_dashboards:
+  - name: "alloy-controller"
+    url: "https://raw.githubusercontent.com/grafana/alloy/main/operations/alloy-mixin/rendered/dashboards/alloy-controller.json"
+    datasource: "Prometheus"
+  - name: "alloy-cluster-overview"
+    url: "https://raw.githubusercontent.com/grafana/alloy/main/operations/alloy-mixin/rendered/dashboards/alloy-cluster-overview.json"
+    datasource: "Prometheus"
+  - name: "alloy-loki"
+    url: "https://raw.githubusercontent.com/grafana/alloy/main/operations/alloy-mixin/rendered/dashboards/alloy-loki.json"
+    datasource: "Prometheus"
+  - name: "alloy-otel-engine-overview"
+    url: "https://raw.githubusercontent.com/grafana/alloy/main/operations/alloy-mixin/rendered/dashboards/alloy-otel-engine-overview.json"
+    datasource: "Prometheus"
+  - name: "alloy-prometheus"
+    url: "https://raw.githubusercontent.com/grafana/alloy/main/operations/alloy-mixin/rendered/dashboards/alloy-prometheus.json"
+    datasource: "Prometheus"
+
+# Дашборды с grafana.com
+grafana_dashboards:
+  # Логи (починен)
+  - name: "loki-logs"
+    id: 13639
+    datasource: "Loki"
+  # cAdvisor (для контейнеров)
+  - name: "docker-cadvisor"
+    id: 14282
+    datasource: "Prometheus"
+  # PostgreSQL
+  - name: "postgresql"
+    id: 9628
+    datasource: "Prometheus"---
+# Директории Grafana
+grafana_provisioning_dir: /etc/grafana/provisioning
+grafana_dashboards_dir: /var/lib/grafana/dashboards
+
+# Дашборды Alloy Mixin (скачиваются напрямую из GitHub)
 # Источник: operations/alloy-mixin/rendered/dashboards/ в репозитории grafana/alloy [citation:3][citation:18]
 grafana_url_dashboards:
   - name: "alloy-controller"
