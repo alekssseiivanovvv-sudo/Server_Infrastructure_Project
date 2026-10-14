@@ -39,6 +39,11 @@ STRING_REPLACEMENTS = {
     '{job="docker"}': '{host=~".+"}',
     '{job="syslog"}': '{host=~".+"}',
     '{service=~".+"}': '{host=~".+"}',
+        # Фикс для cAdvisor: если нет метки name/container, используем id
+    'container="$container"': 'id=~".*"',
+    '{container="$container"}': '{id=~".*"}',
+    'container_name=~"$container"': 'id=~".*"',
+
 }
 
 REGEX_REPLACEMENTS = [
