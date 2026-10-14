@@ -1,17 +1,22 @@
 ---
+# Директории Grafana
 grafana_provisioning_dir: /etc/grafana/provisioning
 grafana_dashboards_dir: /var/lib/grafana/dashboards
 
+# Дашборды, которые скачиваются с grafana.com
+# ВАЖНО: убрали "node-exporter-full" (1860) — вместо него используем локальный файл
 grafana_dashboards:
-  - name: "node-exporter-full"
-    id: 1860
-    datasource: "Prometheus"
+  - name: "loki-logs"
+    id: 13639
+    datasource: "Loki"
   - name: "postgresql"
     id: 9628
     datasource: "Prometheus"
   - name: "docker-cadvisor"
     id: 14282
     datasource: "Prometheus"
-  - name: "loki-logs"
-    id: 24978
-    datasource: "Loki"
+
+# Локальные дашборды (файлы лежат в files/)
+grafana_local_dashboards:
+  - name: "node-exporter-alloy"
+    file: "node-exporter-alloy.json"
