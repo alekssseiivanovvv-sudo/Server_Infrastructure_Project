@@ -1,10 +1,24 @@
-[web_servers]
-east_web ansible_host=192.168.72.2
-west_web ansible_host=192.168.73.2
+[hypervisor_hosts]
+host_1 ansible_host=100.64.0.10
+host_2 ansible_host=100.64.0.11
+
+[automation_nodes]
+automation_node ansible_connection=local
+
+[routers]
+east_router ansible_host=100.64.0.2
+west_router ansible_host=100.64.0.3
+cloud_router ansible_host=100.64.0.1
 
 [db_servers]
 east_db ansible_host=192.168.72.3
 west_db ansible_host=192.168.73.3
+
+[quorum_servers]
+cloud_quorum ansible_host=192.168.74.5
+
+[etcd_servers]
+cloud_quorum
 
 [fs_servers]
 east_storage ansible_host=192.168.72.4
@@ -13,8 +27,19 @@ west_storage ansible_host=192.168.73.4
 [s3_servers]
 cloud_s3 ansible_host=192.168.74.6
 
-[automation_nodes]
-automation_node ansible_connection=local
+[web_servers]
+east_web ansible_host=192.168.72.2
+west_web ansible_host=192.168.73.2
+
+[balance_servers]
+load_balancer ansible_host=192.168.74.4
+
+[monitoring_servers]
+monitoring ansible_host=192.168.74.3
+
+[patroni_servers]
+east_db
+west_db
 
 [seaweed_master_servers]
 cloud_s3
@@ -27,12 +52,6 @@ cloud_s3
 
 [seaweed_s3_servers]
 cloud_s3
-
-[balance_servers]
-load_balancer ansible_host=192.168.74.4
-
-[monitoring_servers]
-monitoring ansible_host=192.168.74.3
 
 [alloy_agents:children]
 web_servers
@@ -51,21 +70,6 @@ web_servers
 [node_exporter_agents:children]
 #routers
 #quorum_servers
-
-[quorum_servers]
-cloud_quorum ansible_host=192.168.74.5
-
-[etcd_servers]
-cloud_quorum
-
-[patroni_servers]
-east_db
-west_db
-
-[routers]
-east_router ansible_host=100.64.0.2
-west_router ansible_host=100.64.0.3
-cloud_router ansible_host=100.64.0.1
 
 [routers:vars]
 ansible_port={{ vault_router_ssh_port }}
@@ -113,7 +117,3 @@ automation_nodes
 
 [backup_storage_servers:children]
 fs_servers
-
-[hypervisor_hosts]
-host_1 ansible_host=100.64.0.10
-host_2 ansible_host=100.64.0.11
