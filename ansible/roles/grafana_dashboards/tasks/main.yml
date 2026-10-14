@@ -29,15 +29,30 @@
     mode: '0640'
   notify: Restart Grafana
 
+- name: Remove old/conflicting provisioning files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ grafana_provisioning_dir }}/datasources/project.yml"
+    - "{{ grafana_provisioning_dir }}/datasources/sample.yaml"
+    - "{{ grafana_provisioning_dir }}/datasources/datasource.yaml"
+  notify: Restart Grafana
+
+# ------------------------------------------------------------------
+# Скачиваем дашборды с grafana.com
+# ------------------------------------------------------------------
+
 - name: Download dashboards from grafana.com
   ansible.builtin.get_url:
-    url: "https://grafana.com/api/dashboards/{{ item.id }}/revisions/1/download"
+    url: "https://grafana.com/api/dashboards/{{ item.id }}/revisions/latest/download"
     dest: "/tmp/{{ item.name }}.json"
     mode: '0644'
+    force: true
   loop: "{{ grafana_dashboards }}"
   register: downloaded
 
-- name: Replace datasource placeholders
+- name: Replace datasource placeholders in downloaded dashboards
   ansible.builtin.replace:
     path: "/tmp/{{ item.item.name }}.json"
     regexp: '\$\{DS_[A-Z0-9_-]+\}'
@@ -45,7 +60,7 @@
   loop: "{{ downloaded.results }}"
   when: item.changed
 
-- name: Copy dashboards into provisioning directory
+- name: Copy downloaded dashboards into Grafana directory
   ansible.builtin.copy:
     src: "/tmp/{{ item.name }}.json"
     dest: "{{ grafana_dashboards_dir }}/{{ item.name }}.json"
@@ -55,3 +70,38 @@
     mode: '0644'
   loop: "{{ grafana_dashboards }}"
   notify: Restart Grafana
+
+# ------------------------------------------------------------------
+# Копируем локальные дашборды (например, node-exporter-alloy.json)
+# ------------------------------------------------------------------
+
+- name: Copy local dashboards
+  ansible.builtin.copy:
+    src: "{{ item.file }}"
+    dest: "{{ grafana_dashboards_dir }}/{{ item.name }}.json"
+    owner: grafana
+    group: grafana
+    mode: '0644'
+  loop: "{{ grafana_local_dashboards }}"
+  notify: Restart Grafana
+
+# ------------------------------------------------------------------
+# Запускаем фикс-скрипт для всех дашбордов
+# ------------------------------------------------------------------
+
+- name: Copy dashboard fix script
+  ansible.builtin.copy:
+    src: fix_dashboards.py
+    dest: /tmp/fix_dashboards.py
+    mode: '0755'
+
+- name: Apply dashboard fixes
+  ansible.builtin.command:
+    cmd: python3 /tmp/fix_dashboards.py {{ grafana_dashboards_dir }}
+  register: fix_result
+  changed_when: fix_result.stdout | length > 0
+  notify: Restart Grafana
+
+- name: Show fix script output
+  ansible.builtin.debug:
+    var: fix_result.stdout_lines
