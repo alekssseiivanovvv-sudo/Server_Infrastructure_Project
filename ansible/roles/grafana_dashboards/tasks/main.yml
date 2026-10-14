@@ -40,9 +40,39 @@
   notify: Restart Grafana
 
 # ------------------------------------------------------------------
-# Скачиваем дашборды с grafana.com
+# Скачиваем дашборды Alloy по прямым URL
 # ------------------------------------------------------------------
+- name: Download Alloy mixin dashboards from GitHub
+  ansible.builtin.get_url:
+    url: "{{ item.url }}"
+    dest: "/tmp/{{ item.name }}.json"
+    mode: '0644'
+    force: true
+  loop: "{{ grafana_url_dashboards }}"
+  register: alloy_downloaded
 
+- name: Replace datasource placeholders in Alloy dashboards
+  ansible.builtin.replace:
+    path: "/tmp/{{ item.item.name }}.json"
+    regexp: '\$\{DS_[A-Z0-9_-]+\}'
+    replace: "{{ item.item.datasource }}"
+  loop: "{{ alloy_downloaded.results }}"
+  when: item.changed
+
+- name: Copy Alloy dashboards into Grafana directory
+  ansible.builtin.copy:
+    src: "/tmp/{{ item.name }}.json"
+    dest: "{{ grafana_dashboards_dir }}/{{ item.name }}.json"
+    remote_src: true
+    owner: grafana
+    group: grafana
+    mode: '0644'
+  loop: "{{ grafana_url_dashboards }}"
+  notify: Restart Grafana
+
+# ------------------------------------------------------------------
+# Скачиваем дашборды с grafana.com по ID
+# ------------------------------------------------------------------
 - name: Download dashboards from grafana.com
   ansible.builtin.get_url:
     url: "https://grafana.com/api/dashboards/{{ item.id }}/revisions/latest/download"
@@ -72,23 +102,8 @@
   notify: Restart Grafana
 
 # ------------------------------------------------------------------
-# Копируем локальные дашборды (например, node-exporter-alloy.json)
+# Фикс-скрипт для дашбордов
 # ------------------------------------------------------------------
-
-- name: Copy local dashboards
-  ansible.builtin.copy:
-    src: "{{ item.file }}"
-    dest: "{{ grafana_dashboards_dir }}/{{ item.name }}.json"
-    owner: grafana
-    group: grafana
-    mode: '0644'
-  loop: "{{ grafana_local_dashboards }}"
-  notify: Restart Grafana
-
-# ------------------------------------------------------------------
-# Запускаем фикс-скрипт для всех дашбордов
-# ------------------------------------------------------------------
-
 - name: Copy dashboard fix script
   ansible.builtin.copy:
     src: fix_dashboards.py
