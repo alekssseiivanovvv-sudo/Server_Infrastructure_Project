@@ -39,13 +39,16 @@ web_servers
 db_servers
 s3_servers
 balance_servers
+monitoring_servers
+quorum_servers
+routers
 
 [docker_servers:children]
 web_servers
 
 [node_exporter_agents:children]
-routers
-quorum_servers
+#routers
+#quorum_servers
 
 [quorum_servers]
 cloud_quorum ansible_host=192.168.74.5
