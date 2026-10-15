@@ -41,18 +41,6 @@ monitoring ansible_host=192.168.74.3
 east_db
 west_db
 
-[seaweed_master_servers]
-cloud_s3
-
-[seaweed_volume_servers]
-cloud_s3
-
-[seaweed_filer_servers]
-cloud_s3
-
-[seaweed_s3_servers]
-cloud_s3
-
 [alloy_agents:children]
 web_servers
 db_servers

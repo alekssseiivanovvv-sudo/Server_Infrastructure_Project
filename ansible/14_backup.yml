@@ -9,7 +9,7 @@
 
   vars:
     backup_restic_user: restic_sysuser
-    backup_repo_root: /srv/restic-repos
+    backup_repo_root: /srv/storage/restic-repos
     backup_config_dir: /etc/project-backup
     backup_postgres_staging_dir: /var/backups/project/postgresql
     backup_postgres_database: shopdb
