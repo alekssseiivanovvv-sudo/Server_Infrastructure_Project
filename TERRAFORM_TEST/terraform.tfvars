@@ -1,5 +1,5 @@
 images_dir   = "/var/lib/libvirt/images"
-storage_pool = default
+storage_pool = "default"
 
 vm-routers = {
   cloud-router = {
@@ -9,7 +9,7 @@ vm-routers = {
     ram               = 512
     system_drive_size = 5
     #files added by ansible
-    base_image = "${alpine_image}"
+    base_image = "alpine"
     cloud_init = "${alpine_cloud_init}" ## еще раз проверить путь после доработки Ansible
     #network configuration
     wan_network = "default"
@@ -26,7 +26,7 @@ vm-routers = {
     ram               = 512
     system_drive_size = 5
     #files added by ansible
-    base_image = "${alpine_image}"
+    base_image = "alpine"
     cloud_init = "${alpine_cloud_init}" ## еще раз проверить путь после доработки Ansible
     #network configuration
     wan_network = "default"
@@ -43,7 +43,7 @@ vm-routers = {
     ram               = 512
     system_drive_size = 5
     #files added by ansible
-    base_image = "${alpine_image}"
+    base_image = "alpine"
     cloud_init = "${alpine_cloud_init}" ## еще раз проверить путь после доработки Ansible
     #network configuration
     wan_network = "default"
@@ -64,7 +64,7 @@ vm-servers = {
     ram               = 3072
     system_drive_size = 20
     #files added by ansible
-    base_image = "${ubuntu_image}"
+    base_image = "ubuntu"
     cloud_init = "${ubuntu_cloud_init}" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "east-lan"
@@ -78,7 +78,7 @@ vm-servers = {
     ram               = 3072
     system_drive_size = 20
     #files added by ansible
-    base_image = "${ubuntu_image}"
+    base_image = "ubuntu"
     cloud_init = "${ubuntu_cloud_init}" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "west-lan"
@@ -92,7 +92,7 @@ vm-servers = {
     ram               = 2048
     system_drive_size = 20
     #files added by ansible
-    base_image = "${ubuntu_image}"
+    base_image = "ubuntu"
     cloud_init = "${ubuntu_cloud_init}" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "cloud-lan"
@@ -119,7 +119,7 @@ vm-servers = {
       }
     ]
     #files added by ansible
-    base_image = "${ubuntu_image}"
+    base_image = "ubuntu"
     cloud_init = "${ubuntu_cloud_init}" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "east-lan"
@@ -146,7 +146,7 @@ vm-servers = {
       }
     ]
     #files added by ansible
-    base_image = "${ubuntu_image}"
+    base_image = "ubuntu"
     cloud_init = "${ubuntu_cloud_init}" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "west-lan"
@@ -173,7 +173,7 @@ vm-servers = {
       }
     ]
     #files added by ansible
-    base_image = "${ubuntu_image}"
+    base_image = "ubuntu"
     cloud_init = "${ubuntu_cloud_init}" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "cloud-lan"
@@ -188,7 +188,7 @@ vm-servers = {
     ram               = 3072
     system_drive_size = 20
     #files added by ansible
-    base_image = "${alpine_image}"
+    base_image = "alpine"
     cloud_init = "${alpine_cloud_init}" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "east-lan"
@@ -203,7 +203,7 @@ vm-servers = {
     ram               = 3072
     system_drive_size = 20
     #files added by ansible
-    base_image = "${alpine_image}"
+    base_image = "alpine"
     cloud_init = "${alpine_cloud_init}" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "west-lan"
@@ -218,7 +218,7 @@ vm-servers = {
     ram               = 2048
     system_drive_size = 20
     #files added by ansible
-    base_image = "${alpine_image}"
+    base_image = "alpine"
     cloud_init = "${alpine_cloud_init}" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "cloud-lan"
@@ -233,7 +233,7 @@ vm-servers = {
     ram               = 2048
     system_drive_size = 30
     #files added by ansible
-    base_image = "${ubuntu_image}"
+    base_image = "ubuntu"
     cloud_init = "${ubuntu_cloud_init}" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "cloud-lan"
