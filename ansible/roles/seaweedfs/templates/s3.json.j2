@@ -1,0 +1,18 @@
+{
+  "identities": [
+    {
+      "name": "shop-app",
+      "credentials": [
+        {
+          "accessKey": {{ vault_shop_seaweed_access_key | to_json }},
+          "secretKey": {{ vault_shop_seaweed_secret_key | to_json }}
+        }
+      ],
+      "actions": [
+        "Read:product-images",
+        "Write:product-images",
+        "List:product-images"
+      ]
+    }
+  ]
+}

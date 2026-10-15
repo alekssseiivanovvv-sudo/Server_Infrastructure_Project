@@ -14,8 +14,8 @@
     - seaweed-filer
     - seaweed-s3
 
-- name: Restart SeaweedFS sync
+- name: Restart SeaweedFS S3
   ansible.builtin.systemd:
-    name: seaweed-sync
+    name: seaweed-s3
     state: restarted
     daemon_reload: true

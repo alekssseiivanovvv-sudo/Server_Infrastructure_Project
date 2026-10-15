@@ -1,12 +1,12 @@
 [Unit]
-Description=SeaweedFS Volume {{ inventory_hostname }}
+Description=SeaweedFS Volume
 After=network-online.target seaweed-master.service
-Wants=network-online.target
+Wants=network-online.target seaweed-master.service
 
 [Service]
 User={{ seaweed_admin_user }}
 Group={{ seaweed_admin_user }}
-ExecStart=/usr/local/bin/weed volume -mserver={{ ansible_host }}:9333 -ip={{ ansible_host }} -port=8080 -dir={{ seaweed_data_dir }}/volume -max={{ seaweed_volume_max }} -dataCenter={{ inventory_hostname.split('_')[0] }} -rack=rack1
+ExecStart=/usr/local/bin/weed volume -mserver=127.0.0.1:9333 -ip=127.0.0.1 -ip.bind=127.0.0.1 -port=8080 -port.grpc=18080 -dir={{ seaweed_data_dir }}/volume -max={{ seaweed_volume_max }}
 Restart=always
 RestartSec=5
 
