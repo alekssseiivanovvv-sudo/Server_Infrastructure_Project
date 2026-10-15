@@ -1,7 +1,7 @@
 ---
 backup_ssh_restic_user: restic_sysuser
 backup_ssh_restic_key_path: "/home/{{ backup_ssh_restic_user }}/.ssh/id_ed25519"
-backup_ssh_repo_root: /srv/restic-repos
+backup_ssh_repo_root: /srv/storage/restic-repos
 backup_ssh_storage_port: "{{ vault_ssh_port }}"
 
 backup_ssh_user_source: "{{ vault_admin_users | default([]) }}"

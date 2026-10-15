@@ -1,13 +1,13 @@
 [Unit]
-Description=SeaweedFS S3 {{ inventory_hostname }}
+Description=SeaweedFS S3 Gateway
 After=network-online.target seaweed-filer.service
-Wants=network-online.target
+Wants=network-online.target seaweed-filer.service
 
 [Service]
 User={{ seaweed_admin_user }}
 Group={{ seaweed_admin_user }}
-ExecStart=/usr/local/bin/weed s3 -filer={{ ansible_host }}:8888 -ip.bind={{ ansible_host }} -port=8333 -config={{ seaweed_s3_config_file }}
-Restart=always
+ExecStart=/usr/local/bin/weed s3 -filer=127.0.0.1:8888 -ip.bind={{ ansible_host }} -port=8333 -config={{ seaweed_s3_config_file }}
+Restart=on-failure
 RestartSec=5
 
 [Install]

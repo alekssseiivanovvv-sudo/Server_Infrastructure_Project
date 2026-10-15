@@ -1,0 +1,18 @@
+---
+patroni_cluster_name: project-postgres
+patroni_data_dir: /var/lib/postgresql/patroni-main
+patroni_rest_port: 8008
+postgres_app_database: shopdb
+postgres_app_user: appuser
+postgres_replication_user: replicator
+postgres_backup_user: backup_reader
+etcd_data_dir: /var/lib/etcd-project
+etcd_cluster_token: project-postgres-etcd3-v1
+# Set once to the installed major on your chosen Ubuntu image; use same on DB + storage.
+postgres_major_version: '18'
+backup_restic_user: restic_sysuser
+backup_repo_root: /srv/storage/restic-repos
+backup_run_now: false
+backup_automation_home: /home/ansible_admin
+data_admin_ipv4: []
+data_extra_client_ipv4: []

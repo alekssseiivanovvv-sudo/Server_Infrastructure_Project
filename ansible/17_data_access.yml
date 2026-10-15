@@ -1,0 +1,67 @@
+---
+- name: Restrict data service ports on Ubuntu VMs
+  hosts: etcd_servers:patroni_servers:s3_servers
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Require IPv4 Ubuntu project hosts
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == 'Ubuntu'
+    - name: Install nftables without replacing existing host rules
+      ansible.builtin.apt:
+        name: nftables
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+    - name: Install dedicated rules
+      ansible.builtin.template:
+        src: templates/project-data.nft.j2
+        dest: /etc/project-data.nft
+        mode: '0644'
+      notify: Apply project data firewall
+    - name: Install firewall loader
+      ansible.builtin.copy:
+        dest: /usr/local/sbin/project-data-firewall
+        mode: '0755'
+        content: |
+          #!/bin/sh
+          set -eu
+          # Create the private table only if missing, then atomically replace its contents.
+          if ! /usr/sbin/nft list table inet project_data >/dev/null 2>&1; then
+            /usr/sbin/nft add table inet project_data
+          fi
+          /usr/sbin/nft -c -f /etc/project-data.nft
+          /usr/sbin/nft -f /etc/project-data.nft
+      notify: Apply project data firewall
+    - name: Install firewall unit
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/project-data-firewall.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Project data service access rules
+          After=nftables.service
+          Before=etcd.service patroni.service seaweed-s3.service
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/sbin/project-data-firewall
+          ExecReload=/usr/local/sbin/project-data-firewall
+          RemainAfterExit=yes
+          [Install]
+          WantedBy=multi-user.target
+      notify: Apply project data firewall
+    - name: Enable project data firewall
+      ansible.builtin.systemd:
+        name: project-data-firewall
+        enabled: true
+        state: started
+        daemon_reload: true
+    - name: Apply updated rules
+      ansible.builtin.meta: flush_handlers
+  handlers:
+    - name: Apply project data firewall
+      ansible.builtin.systemd:
+        name: project-data-firewall
+        state: restarted
+        daemon_reload: true

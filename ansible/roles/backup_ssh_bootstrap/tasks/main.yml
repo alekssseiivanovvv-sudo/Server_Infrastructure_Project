@@ -39,7 +39,7 @@
     cache_valid_time: 3600
   when:
     - backup_ssh_mode == "source"
-    - ansible_facts.distribution == "Ubuntu"
+    - ansible_facts.distribution in ["Ubuntu", "Debian"]
 
 - name: Install SSH client on Alpine backup source
   ansible.builtin.apk:
@@ -150,6 +150,11 @@
   loop: "{{ backup_ssh_source_hosts }}"
   when: backup_ssh_mode == "storage"
 
+- name: Require storage mount before creating repositories
+  ansible.builtin.command: mountpoint -q /srv/storage
+  changed_when: false
+  when: backup_ssh_mode == "storage"
+
 - name: Create Restic repository root on storage node
   ansible.builtin.file:
     path: "{{ backup_ssh_repo_root }}"
@@ -174,6 +179,7 @@
     user: "{{ backup_ssh_restic_user }}"
     key: "{{ hostvars[item].backup_ssh_public_key }}"
     state: present
+    key_options: restrict
     manage_dir: true
   loop: "{{ backup_ssh_source_hosts }}"
   when:
@@ -181,3 +187,44 @@
     - hostvars[item].backup_ssh_public_key is defined
   no_log: true
 
+
+- name: Install SFTP mount guard on storage
+  ansible.builtin.copy:
+    dest: /usr/local/sbin/project-backup-sftp
+    owner: root
+    group: root
+    mode: '0755'
+    content: |
+      #!/bin/sh
+      set -eu
+      /usr/bin/mountpoint -q /srv/storage || exit 1
+      exec /usr/lib/openssh/sftp-server
+  when: backup_ssh_mode == "storage"
+
+- name: Allow backup SFTP user and disable interactive SSH for it
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/95-project-backup.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      AllowUsers {{ backup_ssh_restic_user }}
+      Match User {{ backup_ssh_restic_user }}
+          AuthenticationMethods publickey
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+          DisableForwarding yes
+          ForceCommand /usr/local/sbin/project-backup-sftp
+      Match all
+  when: backup_ssh_mode == "storage"
+
+- name: Validate effective SSH configuration
+  ansible.builtin.command: /usr/sbin/sshd -t
+  changed_when: false
+  when: backup_ssh_mode == "storage"
+
+- name: Reload storage SSH configuration
+  ansible.builtin.systemd:
+    name: ssh
+    state: reloaded
+  when: backup_ssh_mode == "storage"

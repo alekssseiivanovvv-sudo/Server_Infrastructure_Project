@@ -1,0 +1,77 @@
+#!/bin/bash
+set -Eeuo pipefail
+umask 077
+export RESTIC_PASSWORD
+: "${RESTIC_PASSWORD:?}"
+base=/var/backups/project/files
+mkdir -p "$base"
+exec 9>"$base/.lock"
+flock -n 9 || exit 1
+work=$(mktemp -d "$base/run.XXXXXX")
+restart_s3=0
+resume_s3() {
+  systemctl start seaweed-master.service seaweed-volume.service seaweed-filer.service seaweed-s3.service || return 1
+  rm -f /run/project-backup-s3-stopped
+}
+cleanup() {
+  rc=$?
+  trap - EXIT
+  if [ "$restart_s3" -eq 1 ]; then resume_s3 || rc=1; fi
+  rm -rf -- "$work"
+  if [ "$rc" -ne 0 ]; then date -u +%FT%TZ > /var/lib/project-backup-status/files.last-failure; fi
+  exit "$rc"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+{% if inventory_hostname in groups['s3_servers'] %}
+# Consistent cold copy. Do not unexpectedly start a service that was stopped before backup.
+for svc in seaweed-master seaweed-volume seaweed-filer seaweed-s3; do
+  systemctl is-active --quiet "$svc" || { echo "Inactive service: $svc" >&2; exit 1; }
+done
+touch /run/project-backup-s3-stopped
+restart_s3=1
+systemctl stop seaweed-s3 seaweed-filer seaweed-volume seaweed-master
+# Store complete master, filer metadata, volume data and credentials in one archive.
+tar -C / -cpf "$work/seaweedfs.tar" srv/seaweedfs etc/seaweedfs \
+  etc/systemd/system/seaweed-master.service etc/systemd/system/seaweed-volume.service \
+  etc/systemd/system/seaweed-filer.service etc/systemd/system/seaweed-s3.service
+resume_s3
+restart_s3=0
+{% endif %}
+{% if inventory_hostname in groups['automation_nodes'] %}
+# Exclude caches, not SSH keys, dotfiles or the Ansible repository.
+tar -C / --exclude='*/.cache' --exclude='*/.local/share/Trash' \
+  --exclude='*/node_modules' --exclude='*/.venv' \
+  -cpf "$work/automation.tar" {{ backup_automation_home.lstrip('/') | quote }} etc/ssh etc/sudoers.d
+{% endif %}
+{% if inventory_hostname in groups['etcd_servers'] %}
+ETCDCTL_API=3 etcdctl --endpoints=http://127.0.0.1:2379 snapshot save "$work/etcd.snapshot"
+cp /etc/default/etcd-project "$work/etcd.env"
+{% endif %}
+{% if inventory_hostname in groups['patroni_servers'] %}
+cp /etc/patroni/config.yml "$work/patroni.yml"
+{% endif %}
+date -u +%FT%TZ > "$work/backup-created-utc.txt"
+# Upload stable filenames inside a constant staging directory.
+mkdir -p "$base/current"
+find "$base/current" -mindepth 1 -maxdepth 1 -type f -delete
+mv "$work"/* "$base/current/"
+rm -rf -- "$work"
+# Failure of one destination does not prevent an attempt to back up to the other.
+failed=0
+{% for host in groups['backup_storage_servers'] %}
+repo='sftp:{{ backup_restic_user }}@{{ hostvars[host].ansible_host }}:{{ backup_repo_root }}/files-{{ inventory_hostname }}'
+sftp_cmd='ssh -i /home/{{ backup_restic_user }}/.ssh/id_ed25519 -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/home/{{ backup_restic_user }}/.ssh/known_hosts -o ConnectTimeout=10 -p {{ vault_ssh_port }} -s {{ backup_restic_user }}@{{ hostvars[host].ansible_host }} sftp'
+if restic -r "$repo" -o "sftp.command=$sftp_cmd" backup "$base/current" --host {{ inventory_hostname | quote }} --tag project-files &&
+   restic -r "$repo" -o "sftp.command=$sftp_cmd" forget --group-by host,tags --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune &&
+   restic -r "$repo" -o "sftp.command=$sftp_cmd" check; then
+  echo 'Backup to {{ host }} completed'
+else
+  echo 'Backup to {{ host }} FAILED' >&2
+  failed=1
+fi
+{% endfor %}
+[ "$failed" -eq 0 ] || exit 1
+find "$base/current" -mindepth 1 -maxdepth 1 -type f -delete
+date -u +%FT%TZ > /var/lib/project-backup-status/files.last-success

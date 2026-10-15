@@ -1,52 +1,93 @@
 ---
-- name: Install etcd on quorum node
+- name: Refuse implicit migration from etcd v2
+  hosts: patroni_servers
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Inspect existing Patroni configuration
+      ansible.builtin.stat:
+        path: /etc/patroni/config.yml
+      register: old_patroni_config
+    - name: Read existing configuration
+      ansible.builtin.slurp:
+        src: /etc/patroni/config.yml
+      register: old_patroni_content
+      when: old_patroni_config.stat.exists
+      no_log: true
+    - name: Refuse changing an existing v2 cluster in-place
+      ansible.builtin.assert:
+        that:
+          - "'etcd' not in (old_patroni_content.content | b64decode | from_yaml)"
+        fail_msg: 'Existing etcd v2 cluster detected. Follow README migration using NEW VMs; do not delete PostgreSQL data.'
+      when: old_patroni_config.stat.exists
+      no_log: true
+
+- name: Configure etcd v3 members
   hosts: etcd_servers
   become: true
   gather_facts: true
-  vars_files:
-    - group_vars/group/all/vault.yml
-  vars:
-    etcd_name: "{{ inventory_hostname }}"
-    etcd_data_dir: /var/lib/etcd
-    etcd_client_port: 2379
-    etcd_peer_port: 2380
-
   tasks:
-    - name: Install etcd packages
+    - name: Require Ubuntu and supported cluster size
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == 'Ubuntu'
+          - groups['etcd_servers'] | length in [1, 3]
+    - name: Install etcd
       ansible.builtin.apt:
-        name:
-          - etcd-server
-          - etcd-client
+        name: [etcd-server, etcd-client]
         state: present
         update_cache: true
         cache_valid_time: 3600
-
-    - name: Configure single-node etcd for Patroni DCS
-      ansible.builtin.copy:
-        dest: /etc/default/etcd
-        owner: root
-        group: root
-        mode: "0644"
-        content: |
-          ETCD_NAME="{{ etcd_name }}"
-          ETCD_DATA_DIR="{{ etcd_data_dir }}"
-          ETCD_ENABLE_V2="true"
-          ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:{{ etcd_client_port }}"
-          ETCD_ADVERTISE_CLIENT_URLS="http://{{ ansible_host }}:{{ etcd_client_port }}"
-          ETCD_LISTEN_PEER_URLS="http://{{ ansible_host }}:{{ etcd_peer_port }}"
-          ETCD_INITIAL_ADVERTISE_PEER_URLS="http://{{ ansible_host }}:{{ etcd_peer_port }}"
-          ETCD_INITIAL_CLUSTER="{{ etcd_name }}=http://{{ ansible_host }}:{{ etcd_peer_port }}"
-          ETCD_INITIAL_CLUSTER_TOKEN="project-postgres-cluster"
-          ETCD_INITIAL_CLUSTER_STATE="new"
+    - name: Create data directory
+      ansible.builtin.file:
+        path: "{{ etcd_data_dir }}"
+        state: directory
+        owner: etcd
+        group: etcd
+        mode: '0700'
+    - name: Configure etcd
+      ansible.builtin.template:
+        src: templates/etcd.env.j2
+        dest: /etc/default/etcd-project
+        mode: '0644'
       notify: Restart etcd
-
-    - name: Enable and start etcd
+    - name: Install explicit etcd unit
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/etcd.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Project etcd v3
+          After=network-online.target
+          Wants=network-online.target
+          [Service]
+          User=etcd
+          Group=etcd
+          EnvironmentFile=/etc/default/etcd-project
+          ExecStart=/usr/bin/etcd
+          Restart=on-failure
+          RestartSec=5
+          LimitNOFILE=65536
+          [Install]
+          WantedBy=multi-user.target
+      notify: Restart etcd
+    - name: Enable etcd
       ansible.builtin.systemd:
         name: etcd
         enabled: true
         state: started
         daemon_reload: true
-
+    - name: Apply configuration on all members before checking quorum
+      ansible.builtin.meta: flush_handlers
+    - name: Wait for healthy etcd v3 endpoint
+      ansible.builtin.command: etcdctl --endpoints=http://127.0.0.1:2379 endpoint health
+      environment:
+        ETCDCTL_API: '3'
+      register: etcd_health
+      until: etcd_health.rc == 0
+      retries: 30
+      delay: 3
+      changed_when: false
   handlers:
     - name: Restart etcd
       ansible.builtin.systemd:
@@ -54,169 +95,127 @@
         state: restarted
         daemon_reload: true
 
-
-- name: Install PostgreSQL and Patroni on DB nodes
+- name: Configure PostgreSQL and Patroni
   hosts: patroni_servers
   become: true
   gather_facts: true
   serial: 1
-
   vars_files:
     - group_vars/group/all/vault.yml
-
-  vars:
-    patroni_cluster_name: project-postgres
-    patroni_rest_port: 8008
-    patroni_data_dir: /var/lib/postgresql/patroni-main
-    patroni_etcd_host: "{{ hostvars[groups['etcd_servers'][0]].ansible_host }}"
-    patroni_allowed_networks:
-      - 192.168.72.0/27
-      - 192.168.73.0/27
-      - 192.168.74.0/27
-    postgres_app_database: shopdb
-    postgres_app_user: appuser
-    postgres_replication_user: replicator
-
-  pre_tasks:
-    - name: Check database Vault variables
+  tasks:
+    - name: Check required credentials
       ansible.builtin.assert:
         that:
-          - vault_postgres_superuser_password is defined
-          - vault_postgres_replication_password is defined
-          - vault_postgres_app_password is defined
-        fail_msg: Add vault_postgres_superuser_password, vault_postgres_replication_password and vault_postgres_app_password to group_vars/group/all/vault.yml.
+          - vault_postgres_superuser_password | default('') | length > 0
+          - vault_postgres_replication_password | default('') | length > 0
+          - vault_postgres_app_password | default('') | length > 0
+          - vault_postgres_backup_password | default('') | length > 0
+          - vault_patroni_api_password | default('') | length > 0
       no_log: true
-
-  tasks:
-    - name: Install PostgreSQL and Patroni packages
+    - name: Install PostgreSQL and Patroni
       ansible.builtin.apt:
         name:
-          - postgresql
-          - postgresql-client
-          - postgresql-contrib
+          - "postgresql-{{ postgres_major_version }}"
+          - "postgresql-client-{{ postgres_major_version }}"
           - patroni
           - python3-psycopg2
           - python3-etcd
           - python3-etcd3gw
-          - curl
+          - sudo
         state: present
         update_cache: true
         cache_valid_time: 3600
-
-    - name: Find installed PostgreSQL version
-      ansible.builtin.shell: "ls -1 /usr/lib/postgresql | sort -V | tail -n 1"
-      register: postgresql_version
-      changed_when: false
-
-    - name: Stop default PostgreSQL service
+    - name: Stop and mask distribution-managed default cluster
+      ansible.builtin.systemd:
+        name: "postgresql@{{ postgres_major_version }}-main.service"
+        state: stopped
+        enabled: false
+        masked: true
+    - name: Stop distribution PostgreSQL umbrella service
       ansible.builtin.systemd:
         name: postgresql
         state: stopped
         enabled: false
-      failed_when: false
-
     - name: Create Patroni configuration directory
       ansible.builtin.file:
         path: /etc/patroni
         state: directory
+        mode: '0750'
         owner: root
-        group: root
-        mode: "0755"
-
-    - name: Create Patroni data directory
+        group: postgres
+    - name: Create PostgreSQL data directory
       ansible.builtin.file:
         path: "{{ patroni_data_dir }}"
         state: directory
         owner: postgres
         group: postgres
-        mode: "0700"
-
-    - name: Configure Patroni
-      ansible.builtin.copy:
+        mode: '0700'
+    - name: Install Patroni configuration
+      ansible.builtin.template:
+        src: templates/patroni.yml.j2
         dest: /etc/patroni/config.yml
         owner: root
         group: postgres
-        mode: "0640"
-        content: |
-          scope: {{ patroni_cluster_name }}
-          namespace: /service/
-          name: {{ inventory_hostname }}
-
-          restapi:
-            listen: {{ ansible_host }}:{{ patroni_rest_port }}
-            connect_address: {{ ansible_host }}:{{ patroni_rest_port }}
-
-          etcd:
-            host: {{ patroni_etcd_host }}:2379
-
-          bootstrap:
-            dcs:
-              ttl: 30
-              loop_wait: 10
-              retry_timeout: 10
-              maximum_lag_on_failover: 1048576
-              postgresql:
-                use_pg_rewind: true
-                parameters:
-                  wal_level: replica
-                  hot_standby: "on"
-                  wal_keep_size: 256MB
-                  max_wal_senders: 10
-                  max_replication_slots: 10
-            initdb:
-              - encoding: UTF8
-              - data-checksums
-            pg_hba:
-              - local all all peer
-              - host all all 127.0.0.1/32 scram-sha-256
-          {% for network in patroni_allowed_networks %}
-              - host all all {{ network }} scram-sha-256
-              - host replication {{ postgres_replication_user }} {{ network }} scram-sha-256
-          {% endfor %}
-            users:
-              {{ postgres_app_user }}:
-                password: {{ vault_postgres_app_password | to_json }}
-                options:
-                  - login
-
-          postgresql:
-            listen: {{ ansible_host }}:5432
-            connect_address: {{ ansible_host }}:5432
-            data_dir: {{ patroni_data_dir }}
-            bin_dir: /usr/lib/postgresql/{{ postgresql_version.stdout }}/bin
-            pgpass: /tmp/pgpass
-            authentication:
-              superuser:
-                username: postgres
-                password: {{ vault_postgres_superuser_password | to_json }}
-              replication:
-                username: {{ postgres_replication_user }}
-                password: {{ vault_postgres_replication_password | to_json }}
-            parameters:
-              unix_socket_directories: /var/run/postgresql
-
-          tags:
-            nofailover: false
-            noloadbalance: false
-            clonefrom: false
-            nosync: false
+        mode: '0640'
       no_log: true
       notify: Restart Patroni
-
-    - name: Enable and start Patroni
+    - name: Install explicit Patroni systemd unit
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/patroni.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Project Patroni
+          After=network-online.target
+          Wants=network-online.target
+          [Service]
+          User=postgres
+          Group=postgres
+          RuntimeDirectory=postgresql
+          RuntimeDirectoryMode=2775
+          ExecStart=/usr/bin/patroni /etc/patroni/config.yml
+          KillMode=process
+          TimeoutStopSec=120
+          Restart=on-failure
+          RestartSec=5
+          [Install]
+          WantedBy=multi-user.target
+      notify: Restart Patroni
+    - name: Enable Patroni
       ansible.builtin.systemd:
         name: patroni
         enabled: true
         state: started
         daemon_reload: true
-
+    - name: Apply configuration before waiting
+      ansible.builtin.meta: flush_handlers
+    - name: Wait for a healthy PostgreSQL process on this node
+      ansible.builtin.uri:
+        url: "http://{{ ansible_host }}:8008/health"
+        status_code: 200
+      register: node_health
+      until: node_health.status | default(0) == 200
+      retries: 60
+      delay: 5
+    - name: Wait for node to become a primary or streaming replica
+      ansible.builtin.uri:
+        url: "http://{{ ansible_host }}:8008/patroni"
+        status_code: 200
+      register: node_state
+      until: >-
+        node_state.status | default(0) == 200 and
+        node_state.json.state | default('') == 'running' and
+        (node_state.json.role | default('') in ['primary', 'master'] or
+         (node_state.json.role | default('') == 'replica' and
+          node_state.json.replication_state | default('') == 'streaming'))
+      retries: 60
+      delay: 5
   handlers:
     - name: Restart Patroni
       ansible.builtin.systemd:
         name: patroni
         state: restarted
         daemon_reload: true
-
 
 - name: Create application database on current Patroni primary
   hosts: patroni_servers
@@ -231,25 +230,27 @@
     postgres_app_user: appuser
 
   tasks:
-    - name: Check Patroni primary API on this node
+    - name: Read current primary status
       ansible.builtin.uri:
         url: "http://{{ ansible_host }}:8008/primary"
-        status_code:
-          - 200
-          - 503
+        status_code: [200, 503]
       register: patroni_primary_check
-      failed_when: false
       changed_when: false
 
-    - name: Mark current PostgreSQL primary
+    - name: Mark primary
       ansible.builtin.set_fact:
-        is_postgres_primary: "{{ patroni_primary_check.status | default(0) | int == 200 }}"
+        is_postgres_primary: "{{ patroni_primary_check.status | int == 200 }}"
+
+    - name: Require exactly one primary before changing SQL objects
+      ansible.builtin.assert:
+        that:
+          - groups['patroni_servers'] | map('extract', hostvars, 'is_postgres_primary') | select('equalto', true) | list | length == 1
+      run_once: true
 
     - name: Create or update application database user on primary
       ansible.builtin.shell: |
         set -eu
-        export PGPASSWORD={{ vault_postgres_superuser_password | quote }}
-        psql -h {{ ansible_host }} -U postgres -v ON_ERROR_STOP=1 \
+        sudo -u postgres psql -h /var/run/postgresql -U postgres -v ON_ERROR_STOP=1 \
           -v app_user={{ postgres_app_user | quote }} \
           -v app_password={{ vault_postgres_app_password | quote }} <<'SQL'
         SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'app_user', :'app_password')
@@ -264,8 +265,7 @@
     - name: Create application database on primary
       ansible.builtin.shell: |
         set -eu
-        export PGPASSWORD={{ vault_postgres_superuser_password | quote }}
-        psql -h {{ ansible_host }} -U postgres -v ON_ERROR_STOP=1 \
+        sudo -u postgres psql -h /var/run/postgresql -U postgres -v ON_ERROR_STOP=1 \
           -v db_name={{ postgres_app_database | quote }} \
           -v app_user={{ postgres_app_user | quote }} <<'SQL'
         SELECT format('CREATE DATABASE %I OWNER %I', :'db_name', :'app_user')
@@ -281,8 +281,7 @@
     - name: Configure application table and permissions on primary
       ansible.builtin.shell: |
         set -eu
-        export PGPASSWORD={{ vault_postgres_superuser_password | quote }}
-        psql -h {{ ansible_host }} -U postgres -d "{{ postgres_app_database }}" -v ON_ERROR_STOP=1 \
+        sudo -u postgres psql -h /var/run/postgresql -U postgres -d "{{ postgres_app_database }}" -v ON_ERROR_STOP=1 \
           -v app_user={{ postgres_app_user | quote }} <<'SQL'
         CREATE TABLE IF NOT EXISTS public.products (
           id SERIAL PRIMARY KEY,
@@ -301,6 +300,23 @@
 
         SELECT format('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO %I', :'app_user') \gexec
         SELECT format('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO %I', :'app_user') \gexec
+        SQL
+      when: is_postgres_primary
+      no_log: true
+      changed_when: false
+
+    - name: Create dedicated read-only backup role on primary
+      ansible.builtin.shell: |
+        set -eu
+        sudo -u postgres psql -h /var/run/postgresql -v ON_ERROR_STOP=1 \
+          -v role={{ postgres_backup_user | quote }} \
+          -v password={{ vault_postgres_backup_password | quote }} \
+          -v db={{ postgres_app_database | quote }} <<'SQL'
+        SELECT format('CREATE ROLE %I LOGIN', :'role')
+        WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'role') \gexec
+        SELECT format('ALTER ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD %L', :'role', :'password') \gexec
+        SELECT format('GRANT pg_read_all_data TO %I', :'role') \gexec
+        SELECT format('GRANT CONNECT ON DATABASE %I TO %I', :'db', :'role') \gexec
         SQL
       when: is_postgres_primary
       no_log: true

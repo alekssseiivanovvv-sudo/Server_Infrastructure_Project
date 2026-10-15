@@ -1,0 +1,109 @@
+---
+- name: Require supported backup sources and credentials
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution in ['Ubuntu', 'Debian']
+      - ansible_service_mgr == 'systemd'
+      - vault_restic_repository_password | default('') | length > 0
+  no_log: true
+
+- name: Install file backup packages
+  ansible.builtin.apt:
+    name: [restic, openssh-client, tar, util-linux]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Check SSH bootstrap key
+  ansible.builtin.stat:
+    path: "/home/{{ backup_restic_user }}/.ssh/id_ed25519"
+  register: backup_key
+
+- name: Require SSH bootstrap before file backups
+  ansible.builtin.assert:
+    that: backup_key.stat.exists
+    fail_msg: 'Run 13_backup_ssh_bootstrap.yml without --limit first.'
+
+- name: Create private configuration and staging directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  loop:
+    - /etc/project-backup
+    - /var/backups/project/files
+    - /var/lib/project-backup-status
+
+- name: Install source Restic credentials
+  ansible.builtin.copy:
+    dest: /etc/project-backup/files.env
+    mode: '0600'
+    content: |
+      RESTIC_PASSWORD={{ vault_restic_repository_password | to_json }}
+  no_log: true
+
+- name: Install file backup script
+  ansible.builtin.template:
+    src: backup-files.sh.j2
+    dest: /usr/local/sbin/project-files-backup
+    mode: '0700'
+
+- name: Install S3 recovery hook for interrupted cold backup
+  ansible.builtin.copy:
+    dest: /usr/local/sbin/project-backup-resume-s3
+    mode: '0700'
+    content: |
+      #!/bin/sh
+      set -eu
+      if [ -e /run/project-backup-s3-stopped ]; then
+        systemctl start seaweed-master seaweed-volume seaweed-filer seaweed-s3
+        rm -f /run/project-backup-s3-stopped
+      fi
+
+- name: Install source backup service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/project-files-backup.service
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Project source file backup to both storage nodes
+      Wants=network-online.target
+      After=network-online.target
+      [Service]
+      Type=oneshot
+      User=root
+      UMask=0077
+      EnvironmentFile=/etc/project-backup/files.env
+      ExecStart=/usr/local/sbin/project-files-backup
+      ExecStopPost=/usr/local/sbin/project-backup-resume-s3
+      TimeoutStartSec=4h
+      Nice=10
+
+- name: Install source backup timer
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/project-files-backup.timer
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Daily project source backup
+      [Timer]
+      OnCalendar=*-*-* 01:00:00 UTC
+      RandomizedDelaySec=15m
+      Persistent=true
+      [Install]
+      WantedBy=timers.target
+
+- name: Reload and enable source timer
+  ansible.builtin.systemd:
+    name: project-files-backup.timer
+    daemon_reload: true
+    enabled: true
+    state: restarted
+
+- name: Run requested file backup
+  ansible.builtin.systemd:
+    name: project-files-backup.service
+    state: started
+  when: backup_run_now | bool

@@ -1,0 +1,168 @@
+---
+- name: Require Ubuntu with systemd and nonempty credentials
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == 'Ubuntu'
+      - ansible_service_mgr == 'systemd'
+      - vault_postgres_backup_password | default('') | length > 0
+      - vault_restic_repository_password | default('') | length > 0
+  no_log: true
+
+- name: Install backup packages
+  ansible.builtin.apt:
+    name: [restic, "postgresql-client-{{ postgres_major_version }}", util-linux]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Verify backup mount before creating files
+  ansible.builtin.command: mountpoint -q /srv/storage
+  changed_when: false
+
+- name: Ensure backup user exists independently of SSH bootstrap
+  ansible.builtin.user:
+    name: "{{ backup_restic_user }}"
+    create_home: true
+    shell: /bin/bash
+
+- name: Create directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ backup_restic_user }}"
+    group: "{{ backup_restic_user }}"
+    mode: '0700'
+  loop:
+    - "{{ backup_repo_root }}"
+    - "{{ backup_repo_root }}/shopdb"
+    - /srv/storage/db-staging
+    - /srv/storage/db-staging/shopdb
+    - /var/lib/project-backup-status
+
+- name: Create private configuration directory
+  ansible.builtin.file:
+    path: /etc/project-backup
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Install backup credentials consumed by systemd
+  ansible.builtin.copy:
+    dest: /etc/project-backup/db.env
+    mode: '0600'
+    content: |
+      PGPASSWORD={{ vault_postgres_backup_password | to_json }}
+      RESTIC_PASSWORD={{ vault_restic_repository_password | to_json }}
+  no_log: true
+
+- name: Find existing database repository
+  ansible.builtin.stat:
+    path: "{{ backup_repo_root }}/shopdb/config"
+  register: db_repo_config
+
+- name: Initialize repository only when config is absent
+  ansible.builtin.command: "restic -r {{ backup_repo_root }}/shopdb init"
+  become_user: "{{ backup_restic_user }}"
+  environment:
+    RESTIC_PASSWORD: "{{ vault_restic_repository_password }}"
+  when: not db_repo_config.stat.exists
+  no_log: true
+
+- name: Verify repository credentials
+  ansible.builtin.command: "restic -r {{ backup_repo_root }}/shopdb snapshots --latest 1"
+  become_user: "{{ backup_restic_user }}"
+  environment:
+    RESTIC_PASSWORD: "{{ vault_restic_repository_password }}"
+  changed_when: false
+  no_log: true
+
+- name: Install database backup script
+  ansible.builtin.template:
+    src: backup-db.sh.j2
+    dest: /usr/local/sbin/project-db-backup
+    mode: '0755'
+
+- name: Disable old timers if installed
+  ansible.builtin.shell: |
+    set -eu
+    for unit in project-db-backup-east_db.timer project-db-backup-west_db.timer; do
+      if [ -f "/etc/systemd/system/$unit" ]; then
+        systemctl disable --now "$unit"
+        echo disabled
+      fi
+    done
+  register: old_timers
+  changed_when: "'disabled' in old_timers.stdout"
+
+- name: Install database backup service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/project-db-backup.service
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Project shopdb backup from current primary
+      Wants=network-online.target
+      After=network-online.target
+      RequiresMountsFor=/srv/storage
+      [Service]
+      Type=oneshot
+      User={{ backup_restic_user }}
+      Group={{ backup_restic_user }}
+      UMask=0077
+      EnvironmentFile=/etc/project-backup/db.env
+      ExecStartPre=/usr/bin/mountpoint -q /srv/storage
+      ExecStart=/usr/local/sbin/project-db-backup
+      TimeoutStartSec=2h
+      Nice=10
+
+- name: Install database timer
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/project-db-backup.timer
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Daily shopdb backup
+      [Timer]
+      OnCalendar=*-*-* {{ '02:10:00' if inventory_hostname == 'east_storage' else '03:10:00' }} UTC
+      Persistent=true
+      RandomizedDelaySec=5m
+      [Install]
+      WantedBy=timers.target
+
+- name: Reload units and enable database backup timer
+  ansible.builtin.systemd:
+    name: project-db-backup.timer
+    daemon_reload: true
+    enabled: true
+    state: restarted
+
+- name: Run requested first backup
+  ansible.builtin.systemd:
+    name: project-db-backup.service
+    state: started
+  when: backup_run_now | bool
+
+- name: Create file repository directories on mounted storage
+  ansible.builtin.file:
+    path: "{{ backup_repo_root }}/files-{{ item }}"
+    state: directory
+    owner: "{{ backup_restic_user }}"
+    group: "{{ backup_restic_user }}"
+    mode: '0700'
+  loop: "{{ groups['backup_source_servers'] }}"
+
+- name: Inspect file repository configs
+  ansible.builtin.stat:
+    path: "{{ backup_repo_root }}/files-{{ item }}/config"
+  loop: "{{ groups['backup_source_servers'] }}"
+  register: file_repo_configs
+
+- name: Initialize absent file repositories
+  ansible.builtin.command: "restic -r {{ backup_repo_root }}/files-{{ item.item }} init"
+  become_user: "{{ backup_restic_user }}"
+  environment:
+    RESTIC_PASSWORD: "{{ vault_restic_repository_password }}"
+  loop: "{{ file_repo_configs.results }}"
+  when: not item.stat.exists
+  no_log: true

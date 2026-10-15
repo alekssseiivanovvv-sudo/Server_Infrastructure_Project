@@ -28,23 +28,7 @@
       - 192.168.73.0/27
       - 192.168.74.0/27
 
-    router_firewall_routed_tcp_ports:
-      - "{{ vault_router_ssh_port }}"
-      - 80
-      - 443
-      - 5000
-      - 5432
-      - 8008
-      - 8333
-      - 2379
-      - 9090
-      - 3100
-      - 3000
-      - 8404
-      - 9100
-
-    router_firewall_routed_udp_ports:
-      - 53
+    # Service port restrictions are applied on destination VMs by 17_data_access.yml.
 
   roles:
     - router_firewall

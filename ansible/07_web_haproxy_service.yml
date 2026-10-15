@@ -151,6 +151,7 @@
       no_log: true
 
     - name: Validate Docker Compose config
+      no_log: true
       ansible.builtin.command: docker compose config
       args:
         chdir: "{{ shop_web_dir }}"

@@ -1,4 +1,14 @@
 ---
+- name: Check S3 credentials
+  ansible.builtin.assert:
+    that:
+      - vault_seaweed_admin_access_key | default('') | length > 0
+      - vault_seaweed_admin_secret_key | default('') | length >= 32
+      - vault_shop_seaweed_access_key | default('') | length > 0
+      - vault_shop_seaweed_secret_key | default('') | length >= 32
+      - vault_shop_seaweed_access_key != vault_seaweed_admin_access_key
+  no_log: true
+
 - name: Select SeaweedFS administrator from Vault
   ansible.builtin.set_fact:
     selected_seaweed_admin_users: "{{ vault_admin_users | selectattr('name', 'equalto', seaweed_admin_user) | list }}"
@@ -151,6 +161,21 @@
 - name: Show SeaweedFS version
   ansible.builtin.debug:
     msg: "{{ seaweed_version_check.stdout }}"
+
+- name: Apply pending service configuration
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start SeaweedFS services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop:
+    - seaweed-master
+    - seaweed-volume
+    - seaweed-filer
+    - seaweed-s3
 
 - name: Initialize application S3 bucket
   ansible.builtin.import_tasks: bucket.yml

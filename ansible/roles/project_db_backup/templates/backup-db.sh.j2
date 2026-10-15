@@ -1,0 +1,43 @@
+#!/bin/bash
+set -Eeuo pipefail
+umask 077
+repo={{ (backup_repo_root ~ '/shopdb') | quote }}
+stage=/srv/storage/db-staging/shopdb
+status=/var/lib/project-backup-status/shopdb
+mountpoint -q /srv/storage || { echo 'Backup RAID is not mounted' >&2; exit 1; }
+exec 9>/srv/storage/db-staging/.shopdb.lock
+flock -n 9 || { echo 'Another database backup is running' >&2; exit 1; }
+export PGCONNECT_TIMEOUT=10
+export PGPASSWORD RESTIC_PASSWORD
+: "${PGPASSWORD:?}" "${RESTIC_PASSWORD:?}"
+cleanup() {
+  rc=$?
+  rm -f "$stage/shopdb.dump.part"
+  if [ "$rc" -ne 0 ]; then date -u +%FT%TZ > "$status.last-failure"; fi
+  exit "$rc"
+}
+trap cleanup EXIT
+# Stable final path makes Restic retention groups stable.
+# An interrupted dump never replaces the last complete dump.
+ok=0
+for attempt in 1 2 3; do
+  if /usr/lib/postgresql/{{ postgres_major_version }}/bin/pg_dump \
+      -h {{ hostvars[groups['balance_servers'][0]].ansible_host | quote }} -p 5000 \
+      -U {{ postgres_backup_user | quote }} -d {{ postgres_app_database | quote }} \
+      --no-password -Fc -f "$stage/shopdb.dump.part"; then
+    ok=1
+    break
+  fi
+  rm -f "$stage/shopdb.dump.part"
+  [ "$attempt" -eq 3 ] || sleep 10
+done
+[ "$ok" -eq 1 ] || { echo 'Database dump failed after 3 attempts' >&2; exit 1; }
+/usr/lib/postgresql/{{ postgres_major_version }}/bin/pg_restore --list "$stage/shopdb.dump.part" >/dev/null
+mv -f "$stage/shopdb.dump.part" "$stage/shopdb.dump"
+date -u +%FT%TZ > "$stage/backup-created-utc.txt"
+restic -r "$repo" backup "$stage" --host project-postgres --tag shopdb
+restic -r "$repo" forget --group-by host,tags --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+# Metadata integrity on each run; full data-read check is described in README.
+restic -r "$repo" check
+date -u +%FT%TZ > "$status.last-success"
+echo 'shopdb backup, retention and repository check completed'

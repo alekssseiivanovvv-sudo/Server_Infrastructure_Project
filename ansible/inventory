@@ -18,6 +18,8 @@ west_db ansible_host=192.168.73.3
 cloud_quorum ansible_host=192.168.74.5
 
 [etcd_servers]
+east_db
+west_db
 cloud_quorum
 
 [fs_servers]
@@ -99,9 +101,9 @@ quorum_servers
 ansible_port={{ vault_ssh_port }}
 
 [backup_source_servers:children]
-db_servers
 s3_servers
 automation_nodes
+etcd_servers
 
 [backup_storage_servers:children]
 fs_servers

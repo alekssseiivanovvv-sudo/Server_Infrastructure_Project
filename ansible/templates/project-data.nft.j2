@@ -1,0 +1,23 @@
+# Only this table is managed. SSH and unrelated services keep existing policy.
+flush table inet project_data
+table inet project_data {
+  chain input {
+    type filter hook input priority -10; policy accept;
+    iifname "lo" accept
+{% if inventory_hostname in groups['etcd_servers'] %}
+    ip saddr { {{ ((groups['patroni_servers'] + groups['etcd_servers']) | unique | map('extract', hostvars, 'ansible_host') | list + data_admin_ipv4) | unique | join(', ') }} tcp dport 2379 accept
+    ip saddr { {{ groups['etcd_servers'] | map('extract', hostvars, 'ansible_host') | join(', ') }} tcp dport 2380 accept
+    tcp dport { 2379, 2380 } drop
+{% endif %}
+{% if inventory_hostname in groups['patroni_servers'] %}
+    ip saddr { {{ ((groups['patroni_servers'] + groups['balance_servers'] + groups['monitoring_servers']) | unique | map('extract', hostvars, 'ansible_host') | list + data_admin_ipv4) | unique | join(', ') }} tcp dport 8008 accept
+    tcp dport 8008 drop
+    ip saddr { {{ ((groups['patroni_servers'] + groups['balance_servers'] + groups['backup_storage_servers']) | unique | map('extract', hostvars, 'ansible_host') | list + data_admin_ipv4 + data_extra_client_ipv4) | unique | join(', ') }} tcp dport 5432 accept
+    tcp dport 5432 drop
+{% endif %}
+{% if inventory_hostname in groups['s3_servers'] %}
+    ip saddr { {{ (groups['web_servers'] | map('extract', hostvars, 'ansible_host') | list + [ansible_host] + data_admin_ipv4) | unique | join(', ') }} tcp dport 8333 accept
+    tcp dport { 8333, 9333, 19333, 8080, 18080, 8888, 18888 } drop
+{% endif %}
+  }
+}
