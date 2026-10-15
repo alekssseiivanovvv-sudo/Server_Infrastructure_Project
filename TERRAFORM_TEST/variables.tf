@@ -94,9 +94,3 @@ variable "vm-servers" {
     auto_start = optional(bool, true) # Whether to automatically start the VM on host boot (default: true)
   }))
 }
-
-variable "enabled_hosts" {
-  description = "available hosts for VM deployment."
-  type        = set(string)
-  default     = ["host_1"]   #
-}
