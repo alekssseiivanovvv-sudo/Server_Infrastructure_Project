@@ -60,13 +60,13 @@ variable "vm-routers" {
     vcpus             = number               # The number of virtual CPUs to allocate to the router
     ram               = number               # The amount of memory (in MB) to allocate to the router
     system_drive_size = number               # The size of the drive (in GB) to allocate to the router
-    image             = string               # The image to use for the router
+    base_image             = string               # The image to use for the router
     cloud_init        = string               # The cloud-init configuration to use for the router
+    wan_bridge        = string     # The name of the WAN bridge to connect the router to (optional)
+    wan_mac           = string 
     lan_bridge        = string               # The name of the LAN bridge to connect the router to
     lan_mac           = string               # The MAC address to assign to the router's LAN interface
-    wan_bridge        = optional(string)     # The name of the WAN bridge to connect the router to (optional)
-    wan_mac           = optional(string)     # The MAC address to assign to the router's WAN interface (optional)
-    auto_start        = optional(bool, true) # Whether to automatically start the router on host boot (default: true)
+    autostart        = optional(bool, true) # Whether to automatically start the router on host boot (default: true)
   }))
 }
 
@@ -85,12 +85,12 @@ variable "vm-servers" {
       quantity = number # The number of extra drives to create
       size     = number # The size of each extra drive (in GB)
     })))
-    image      = string               # The image to use for the VM
+    base_image      = string               # The image to use for the VM
     cloud_init = string               # The cloud-init configuration to use for the VM
-    lan_bridge = string               # The name of the LAN bridge to connect the VM to
+    lan_network = string               # The name of the LAN bridge to connect the VM to
     lan_mac    = string               # The MAC address to assign to the VM's LAN interface
-    wan_bridge = optional(string)     # The name of the WAN bridge to connect the VM to (optional
+    wan_network = optional(string)     # The name of the WAN bridge to connect the VM to (optional
     wan_mac    = optional(string)     # The MAC address to assign to the VM's WAN interface (optional
-    auto_start = optional(bool, true) # Whether to automatically start the VM on host boot (default: true)
+    autostart = optional(bool, true) # Whether to automatically start the VM on host boot (default: true)
   }))
 }

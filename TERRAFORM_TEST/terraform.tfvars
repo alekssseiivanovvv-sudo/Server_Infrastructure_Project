@@ -10,7 +10,7 @@ vm-routers = {
     system_drive_size = 5
     #files added by ansible
     base_image = "alpine"
-    cloud_init = "${alpine_cloud_init}" ## еще раз проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
     wan_network = "default"
     wan_mac     = "52:54:00:74:01:01"
@@ -27,7 +27,7 @@ vm-routers = {
     system_drive_size = 5
     #files added by ansible
     base_image = "alpine"
-    cloud_init = "${alpine_cloud_init}" ## еще раз проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
     wan_network = "default"
     wan_mac     = "52:54:00:72:01:01"
@@ -44,7 +44,7 @@ vm-routers = {
     system_drive_size = 5
     #files added by ansible
     base_image = "alpine"
-    cloud_init = "${alpine_cloud_init}" ## еще раз проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
     wan_network = "default"
     wan_mac     = "52:54:00:73:01:01"
@@ -65,7 +65,7 @@ vm-servers = {
     system_drive_size = 20
     #files added by ansible
     base_image = "ubuntu"
-    cloud_init = "${ubuntu_cloud_init}" ## еще раз проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "east-lan"
     lan_mac     = "52:54:00:72:02:01"
@@ -79,7 +79,7 @@ vm-servers = {
     system_drive_size = 20
     #files added by ansible
     base_image = "ubuntu"
-    cloud_init = "${ubuntu_cloud_init}" ## еще раз проверить путь после доработки Ansible
+    cloud_init = "$/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "west-lan"
     lan_mac     = "52:54:00:73:02:01"
@@ -93,7 +93,7 @@ vm-servers = {
     system_drive_size = 20
     #files added by ansible
     base_image = "ubuntu"
-    cloud_init = "${ubuntu_cloud_init}" ## еще раз проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "cloud-lan"
     lan_mac     = "52:54:00:74:02:01"
@@ -120,7 +120,7 @@ vm-servers = {
     ]
     #files added by ansible
     base_image = "ubuntu"
-    cloud_init = "${ubuntu_cloud_init}" ## еще раз проверить путь после доработки Ansible
+    cloud_init = "$/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "east-lan"
     lan_mac     = "52:54:00:72:03:01"
@@ -147,7 +147,7 @@ vm-servers = {
     ]
     #files added by ansible
     base_image = "ubuntu"
-    cloud_init = "${ubuntu_cloud_init}" ## еще раз проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "west-lan"
     lan_mac     = "52:54:00:73:03:01"
@@ -174,7 +174,7 @@ vm-servers = {
     ]
     #files added by ansible
     base_image = "ubuntu"
-    cloud_init = "${ubuntu_cloud_init}" ## еще раз проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "cloud-lan"
     lan_mac     = "52:54:00:74:03:01"
@@ -189,7 +189,7 @@ vm-servers = {
     system_drive_size = 20
     #files added by ansible
     base_image = "alpine"
-    cloud_init = "${alpine_cloud_init}" ## еще раз проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "east-lan"
     lan_mac     = "52:54:00:72:04:01"
@@ -204,7 +204,7 @@ vm-servers = {
     system_drive_size = 20
     #files added by ansible
     base_image = "alpine"
-    cloud_init = "${alpine_cloud_init}" ## еще раз проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "west-lan"
     lan_mac     = "52:54:00:73:04:01"
@@ -219,7 +219,7 @@ vm-servers = {
     system_drive_size = 20
     #files added by ansible
     base_image = "alpine"
-    cloud_init = "${alpine_cloud_init}" ## еще раз проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "cloud-lan"
     lan_mac     = "52:54:00:74:04:01"
@@ -234,7 +234,7 @@ vm-servers = {
     system_drive_size = 30
     #files added by ansible
     base_image = "ubuntu"
-    cloud_init = "${ubuntu_cloud_init}" ## еще раз проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
     lan_network = "cloud-lan"
     lan_mac     = "52:54:00:74:05:01"
