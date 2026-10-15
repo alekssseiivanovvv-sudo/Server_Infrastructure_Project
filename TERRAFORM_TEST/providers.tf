@@ -12,3 +12,8 @@ provider "libvirt" {
   alias = "host_1"
   uri   = "qemu+ssh://ansible_admin@100.64.0.10/system"
 }
+
+provider "libvirt" {
+  alias = "host_2"
+  uri   = "qemu+ssh://ansible_admin@100.64.0.12/system"
+}
