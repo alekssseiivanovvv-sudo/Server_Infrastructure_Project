@@ -37,12 +37,6 @@ def get_s3_client():
         region_name='us-east-1'
     )
 
-def ensure_bucket(s3):
-    try:
-        s3.head_bucket(Bucket=SEAWEED_BUCKET)
-    except Exception:
-        s3.create_bucket(Bucket=SEAWEED_BUCKET)
-
 # Инициализация БД (ленивая, т.к. gunicorn не выполняет __main__)
 _db_initialized = False
 
@@ -103,7 +97,6 @@ def add_product():
         image_key = f"{uuid.uuid4().hex}{ext}"
         try:
             s3 = get_s3_client()
-            ensure_bucket(s3)
             s3.upload_fileobj(io.BytesIO(file.read()), SEAWEED_BUCKET, image_key, ExtraArgs={'ContentType': file.mimetype})
         except Exception as e:
             return jsonify({"error": f"Image upload failed: {e}"}), 500
