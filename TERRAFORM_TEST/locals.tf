@@ -4,12 +4,12 @@ locals {
   vm_extra_drives = {
     for vm_key, vm in var.vm-servers : vm_key => [
       for idx, d in coalesce(vm.extra_drives, []) : {
-        key  = format(
+        key = format(
           "%s-%d",
           d.name,
           length([
             for x in slice(coalesce(vm.extra_drives, []), 0, idx + 1) :
-              x if x.name == d.name
+            x if x.name == d.name
           ])
         )
         name = d.name

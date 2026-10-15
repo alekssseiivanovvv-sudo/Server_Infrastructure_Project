@@ -1,2 +1,2 @@
-storage_pool = "/var/lib/libvirt/images"
+images_dir = "/var/lib/libvirt/images"
 
