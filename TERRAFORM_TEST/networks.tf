@@ -24,3 +24,15 @@ resource "libvirt_network" "cloud_lan" {
     delay = "0"
   }
 }
+
+resource "libvirt_network" "west_lan" {
+  provider  = libvirt.host_2
+  name      = "west-lan"
+  autostart = true
+
+  bridge = {
+    name  = "virbr-west"
+    stp   = "on"
+    delay = "0"
+  }
+}
