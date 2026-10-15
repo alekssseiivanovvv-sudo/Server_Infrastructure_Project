@@ -26,6 +26,8 @@
       - ca-certificates
       - curl
       - tar
+      - python3
+      - python3-boto3
     state: present
     update_cache: true
     cache_valid_time: 3600
@@ -141,62 +143,6 @@
     - Reload systemd
     - Restart SeaweedFS
 
-- name: Configure initial SeaweedFS sync service
-  ansible.builtin.template:
-    src: seaweed-sync.service.j2
-    dest: /etc/systemd/system/seaweed-sync.service
-    owner: root
-    group: root
-    mode: "0644"
-  when:
-    - seaweed_enable_sync | default(false) | bool
-    - inventory_hostname == (seaweed_primary_host | default(''))
-  notify:
-    - Reload systemd
-    - Restart SeaweedFS sync
-
-- name: Remove SeaweedFS sync service when sync is disabled or node is passive
-  ansible.builtin.file:
-    path: /etc/systemd/system/seaweed-sync.service
-    state: absent
-  when: >-
-    not (seaweed_enable_sync | default(false) | bool)
-    or inventory_hostname != (seaweed_primary_host | default(''))
-  notify: Reload systemd
-
-- name: Enable and start SeaweedFS services
-  ansible.builtin.systemd:
-    name: "{{ item }}"
-    enabled: true
-    state: started
-    daemon_reload: true
-  loop:
-    - seaweed-master
-    - seaweed-volume
-    - seaweed-filer
-    - seaweed-s3
-
-- name: Enable and start SeaweedFS sync on primary node
-  ansible.builtin.systemd:
-    name: seaweed-sync
-    enabled: true
-    state: started
-    daemon_reload: true
-  when:
-    - seaweed_enable_sync | default(false) | bool
-    - inventory_hostname == (seaweed_primary_host | default(''))
-
-- name: Disable SeaweedFS sync when sync is disabled or node is passive
-  ansible.builtin.systemd:
-    name: seaweed-sync
-    enabled: false
-    state: stopped
-    daemon_reload: true
-  when: >-
-    not (seaweed_enable_sync | default(false) | bool)
-    or inventory_hostname != (seaweed_primary_host | default(''))
-  failed_when: false
-
 - name: Check SeaweedFS version
   ansible.builtin.command: /usr/local/bin/weed version
   register: seaweed_version_check
@@ -205,3 +151,6 @@
 - name: Show SeaweedFS version
   ansible.builtin.debug:
     msg: "{{ seaweed_version_check.stdout }}"
+
+- name: Initialize application S3 bucket
+  ansible.builtin.import_tasks: bucket.yml

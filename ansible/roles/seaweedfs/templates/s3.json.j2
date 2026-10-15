@@ -1,6 +1,22 @@
 {
   "identities": [
     {
+      "name": "s3-bootstrap-admin",
+      "credentials": [
+        {
+          "accessKey": {{ vault_seaweed_admin_access_key | to_json }},
+          "secretKey": {{ vault_seaweed_admin_secret_key | to_json }}
+        }
+      ],
+      "actions": [
+        "Admin",
+        "Read",
+        "Write",
+        "List",
+        "Tagging"
+      ]
+    },
+    {
       "name": "shop-app",
       "credentials": [
         {
