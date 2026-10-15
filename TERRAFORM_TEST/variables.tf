@@ -53,7 +53,7 @@ variable "storage_pool" {
 }
 
 variable "vm-routers" {
-    description = "Routers must be created first, as they are used to connect the VMs to the network."
+    description = "A map of virtual routers to create."
         type = map(object({
         host = string # The host to create the router on (host_1 or host_2)
         name = string # The name of the router
@@ -70,6 +70,7 @@ variable "vm-routers" {
     }))
 }
 
+#routers must be created first, as they are used to connect the VMs to the network.
 
 variable "vm-servers" {
     description = "A map of virtual servers to create."
