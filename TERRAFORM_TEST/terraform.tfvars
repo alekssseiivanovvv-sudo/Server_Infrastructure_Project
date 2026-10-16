@@ -1,5 +1,7 @@
 images_dir   = "/var/lib/libvirt/images"
 storage_pool = "default"
+
+#routers must be created before servers, because servers depend on routers for network connectivity.
 vm-routers = {
   cloud_router = {
     host              = "host_1"
