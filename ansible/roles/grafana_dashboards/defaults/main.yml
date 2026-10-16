@@ -13,6 +13,7 @@ grafana_dashboards_dir: /var/lib/grafana/dashboards/ansible
 grafana_dashboard_files:
   - alloy-host-overview.json   # метрики хостов (Prometheus)
   - alloy-logs-overview.json   # ошибки и логи (Loki)
+  - alloy-docker-containers.json   # метрики контейнеров (cAdvisor)
 
 # Удалять из grafana_dashboards_dir все *.json, которых нет в списке выше
 # (чистит ранее скачанные дашборды). Grafana сама уберёт их из UI.

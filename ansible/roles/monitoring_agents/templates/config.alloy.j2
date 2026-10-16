@@ -57,7 +57,16 @@ discovery.relabel "docker_logs" {
   targets = discovery.docker.containers.targets
   rule {
     source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
     target_label  = "container_name"
+  }
+  rule {
+    target_label = "job"
+    replacement  = "docker"
+  }
+  rule {
+    target_label = "host"
+    replacement  = constants.hostname
   }
 }
 

@@ -20,6 +20,7 @@
     name: alloy
     groups: "{{ ['wheel'] + (['docker'] if alloy_docker_enabled | bool else []) }}"
     append: true
+  notify: Restart alloy
   when: ansible_facts.distribution == "Alpine"
 
 - name: Install Ubuntu Alloy repository dependencies
@@ -74,6 +75,7 @@
     name: alloy
     groups: "{{ ['adm', 'systemd-journal'] + (['docker'] if alloy_docker_enabled | bool else []) }}"
     append: true
+  notify: Restart alloy
   when: ansible_facts.distribution == "Ubuntu"
 
 - name: Create Alloy config directory
