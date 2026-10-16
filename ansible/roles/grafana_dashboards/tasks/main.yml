@@ -81,3 +81,48 @@
     path: "{{ item }}"
     state: absent
   loop: "{{ grafana_legacy_dashboard_files + grafana_legacy_tmp_files }}"
+
+# ------------------------------------------------------------------
+# Алерты: правила, политика уведомлений и контакт Telegram
+# Правила и политика копируются как есть (copy): в них Go-шаблоны Grafana.
+# Контакт содержит токен, поэтому template + no_log.
+# Файлы alerting читаются при старте Grafana, поэтому notify Restart.
+# ------------------------------------------------------------------
+- name: Deploy Grafana alerting
+  when: grafana_alerting_enabled | bool
+  block:
+    - name: Ensure alerting provisioning directory exists
+      ansible.builtin.file:
+        path: "{{ grafana_provisioning_dir }}/alerting"
+        state: directory
+        owner: grafana
+        group: grafana
+        mode: '0755'
+
+    - name: Deploy alert rules
+      ansible.builtin.copy:
+        src: alerting/rules.yml
+        dest: "{{ grafana_provisioning_dir }}/alerting/rules.yml"
+        owner: grafana
+        group: grafana
+        mode: '0640'
+      notify: Restart Grafana
+
+    - name: Deploy notification policy
+      ansible.builtin.copy:
+        src: alerting/policies.yml
+        dest: "{{ grafana_provisioning_dir }}/alerting/policies.yml"
+        owner: grafana
+        group: grafana
+        mode: '0640'
+      notify: Restart Grafana
+
+    - name: Deploy Telegram contact point
+      ansible.builtin.template:
+        src: contact-points.yml.j2
+        dest: "{{ grafana_provisioning_dir }}/alerting/contact-points.yml"
+        owner: grafana
+        group: grafana
+        mode: '0640'
+      no_log: true
+      notify: Restart Grafana

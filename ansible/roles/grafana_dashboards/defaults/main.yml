@@ -35,3 +35,13 @@ grafana_legacy_tmp_files:
   - /tmp/loki-logs.json
   - /tmp/docker-cadvisor.json
   - /tmp/postgresql.json
+
+# ------------------------------------------------------------------
+# Алерты в Telegram (Grafana alerting, provisioning из файлов)
+# Токен бота и chat id берутся из ansible-vault:
+#   vault_telegram_bot_token, vault_telegram_chat_id
+# Если не заданы, алертинг не разворачивается.
+# ------------------------------------------------------------------
+grafana_telegram_bot_token: "{{ vault_telegram_bot_token | default('') }}"
+grafana_telegram_chat_id: "{{ vault_telegram_chat_id | default('') }}"
+grafana_alerting_enabled: "{{ (grafana_telegram_bot_token | string | length > 0) and (grafana_telegram_chat_id | string | length > 0) }}"

@@ -1,0 +1,511 @@
+apiVersion: 1
+groups:
+- orgId: 1
+  name: hosts
+  folder: Alerts
+  interval: 1m
+  rules:
+  - uid: host-not-reporting
+    title: Host not reporting
+    condition: C
+    for: 1m
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: '{{ $labels.instance }} stopped sending metrics'
+      description: No metrics from {{ $labels.instance }} for {{ printf "%.0f" $values.B.Value }} seconds. The host or its Alloy agent is down.
+    data:
+    - refId: A
+      relativeTimeRange: &id001
+        from: 600
+        to: 0
+      datasourceUid: prometheus-uid
+      model:
+        datasource:
+          type: prometheus
+          uid: prometheus-uid
+        editorMode: code
+        expr: time() - max by (instance) (max_over_time(timestamp(node_uname_info)[1h:30s]))
+        instant: true
+        range: false
+        intervalMs: 1000
+        legendFormat: __auto
+        maxDataPoints: 43200
+        refId: A
+    - refId: B
+      relativeTimeRange: *id001
+      datasourceUid: __expr__
+      model:
+        type: reduce
+        expression: A
+        reducer: last
+        refId: B
+        settings:
+          mode: dropNN
+        datasource: &id002
+          type: __expr__
+          uid: __expr__
+    - refId: C
+      relativeTimeRange: *id001
+      datasourceUid: __expr__
+      model:
+        type: threshold
+        expression: B
+        refId: C
+        datasource: *id002
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 180
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            params: []
+            type: last
+          type: query
+  - uid: host-cpu-high
+    title: CPU usage high
+    condition: C
+    for: 10m
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: warning
+    annotations:
+      summary: CPU on {{ $labels.instance }} is at {{ printf "%.0f" $values.B.Value }} percent
+      description: CPU usage stayed above 90 percent for 10 minutes.
+    data:
+    - refId: A
+      relativeTimeRange: &id003
+        from: 600
+        to: 0
+      datasourceUid: prometheus-uid
+      model:
+        datasource:
+          type: prometheus
+          uid: prometheus-uid
+        editorMode: code
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+        instant: true
+        range: false
+        intervalMs: 1000
+        legendFormat: __auto
+        maxDataPoints: 43200
+        refId: A
+    - refId: B
+      relativeTimeRange: *id003
+      datasourceUid: __expr__
+      model:
+        type: reduce
+        expression: A
+        reducer: last
+        refId: B
+        settings:
+          mode: dropNN
+        datasource: *id002
+    - refId: C
+      relativeTimeRange: *id003
+      datasourceUid: __expr__
+      model:
+        type: threshold
+        expression: B
+        refId: C
+        datasource: *id002
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 90
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            params: []
+            type: last
+          type: query
+  - uid: host-memory-high
+    title: Memory usage high
+    condition: C
+    for: 10m
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: warning
+    annotations:
+      summary: Memory on {{ $labels.instance }} is at {{ printf "%.0f" $values.B.Value }} percent
+      description: Memory usage stayed above 90 percent for 10 minutes.
+    data:
+    - refId: A
+      relativeTimeRange: &id004
+        from: 600
+        to: 0
+      datasourceUid: prometheus-uid
+      model:
+        datasource:
+          type: prometheus
+          uid: prometheus-uid
+        editorMode: code
+        expr: 100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
+        instant: true
+        range: false
+        intervalMs: 1000
+        legendFormat: __auto
+        maxDataPoints: 43200
+        refId: A
+    - refId: B
+      relativeTimeRange: *id004
+      datasourceUid: __expr__
+      model:
+        type: reduce
+        expression: A
+        reducer: last
+        refId: B
+        settings:
+          mode: dropNN
+        datasource: *id002
+    - refId: C
+      relativeTimeRange: *id004
+      datasourceUid: __expr__
+      model:
+        type: threshold
+        expression: B
+        refId: C
+        datasource: *id002
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 90
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            params: []
+            type: last
+          type: query
+  - uid: host-disk-warning
+    title: Disk filling up
+    condition: C
+    for: 10m
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: warning
+    annotations:
+      summary: Disk {{ $labels.mountpoint }} on {{ $labels.instance }} is {{ printf "%.0f" $values.B.Value }} percent full
+      description: Filesystem usage is above 85 percent.
+    data:
+    - refId: A
+      relativeTimeRange: &id005
+        from: 600
+        to: 0
+      datasourceUid: prometheus-uid
+      model:
+        datasource:
+          type: prometheus
+          uid: prometheus-uid
+        editorMode: code
+        expr: 100 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs|ramfs|devtmpfs|rootfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs|ramfs|devtmpfs|rootfs"} * 100)
+        instant: true
+        range: false
+        intervalMs: 1000
+        legendFormat: __auto
+        maxDataPoints: 43200
+        refId: A
+    - refId: B
+      relativeTimeRange: *id005
+      datasourceUid: __expr__
+      model:
+        type: reduce
+        expression: A
+        reducer: last
+        refId: B
+        settings:
+          mode: dropNN
+        datasource: *id002
+    - refId: C
+      relativeTimeRange: *id005
+      datasourceUid: __expr__
+      model:
+        type: threshold
+        expression: B
+        refId: C
+        datasource: *id002
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 85
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            params: []
+            type: last
+          type: query
+  - uid: host-disk-critical
+    title: Disk almost full
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: Disk {{ $labels.mountpoint }} on {{ $labels.instance }} is {{ printf "%.0f" $values.B.Value }} percent full
+      description: Filesystem usage is above 95 percent.
+    data:
+    - refId: A
+      relativeTimeRange: &id006
+        from: 600
+        to: 0
+      datasourceUid: prometheus-uid
+      model:
+        datasource:
+          type: prometheus
+          uid: prometheus-uid
+        editorMode: code
+        expr: 100 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs|ramfs|devtmpfs|rootfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs|ramfs|devtmpfs|rootfs"} * 100)
+        instant: true
+        range: false
+        intervalMs: 1000
+        legendFormat: __auto
+        maxDataPoints: 43200
+        refId: A
+    - refId: B
+      relativeTimeRange: *id006
+      datasourceUid: __expr__
+      model:
+        type: reduce
+        expression: A
+        reducer: last
+        refId: B
+        settings:
+          mode: dropNN
+        datasource: *id002
+    - refId: C
+      relativeTimeRange: *id006
+      datasourceUid: __expr__
+      model:
+        type: threshold
+        expression: B
+        refId: C
+        datasource: *id002
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 95
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            params: []
+            type: last
+          type: query
+- orgId: 1
+  name: containers
+  folder: Alerts
+  interval: 1m
+  rules:
+  - uid: container-oom
+    title: Container killed (out of memory)
+    condition: C
+    for: 0s
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: A container on {{ $labels.instance }} ran out of memory
+      description: The kernel killed a container for exceeding its memory limit in the last 5 minutes.
+    data:
+    - refId: A
+      relativeTimeRange: &id007
+        from: 600
+        to: 0
+      datasourceUid: prometheus-uid
+      model:
+        datasource:
+          type: prometheus
+          uid: prometheus-uid
+        editorMode: code
+        expr: sum by (instance, id) (increase(container_oom_events_total{id=~"/docker/.+"}[5m]))
+        instant: true
+        range: false
+        intervalMs: 1000
+        legendFormat: __auto
+        maxDataPoints: 43200
+        refId: A
+    - refId: B
+      relativeTimeRange: *id007
+      datasourceUid: __expr__
+      model:
+        type: reduce
+        expression: A
+        reducer: last
+        refId: B
+        settings:
+          mode: dropNN
+        datasource: *id002
+    - refId: C
+      relativeTimeRange: *id007
+      datasourceUid: __expr__
+      model:
+        type: threshold
+        expression: B
+        refId: C
+        datasource: *id002
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            params: []
+            type: last
+          type: query
+  - uid: container-none-running
+    title: No containers on Docker host
+    condition: C
+    for: 3m
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: critical
+    annotations:
+      summary: No containers running on {{ $labels.instance }}
+      description: cAdvisor is reporting but sees no Docker containers. They are stopped, or container metrics are broken.
+    data:
+    - refId: A
+      relativeTimeRange: &id008
+        from: 600
+        to: 0
+      datasourceUid: prometheus-uid
+      model:
+        datasource:
+          type: prometheus
+          uid: prometheus-uid
+        editorMode: code
+        expr: count by (instance) (container_last_seen{id="/"}) unless count by (instance) (container_last_seen{id=~"/docker/.+"})
+        instant: true
+        range: false
+        intervalMs: 1000
+        legendFormat: __auto
+        maxDataPoints: 43200
+        refId: A
+    - refId: B
+      relativeTimeRange: *id008
+      datasourceUid: __expr__
+      model:
+        type: reduce
+        expression: A
+        reducer: last
+        refId: B
+        settings:
+          mode: dropNN
+        datasource: *id002
+    - refId: C
+      relativeTimeRange: *id008
+      datasourceUid: __expr__
+      model:
+        type: threshold
+        expression: B
+        refId: C
+        datasource: *id002
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            params: []
+            type: last
+          type: query
+- orgId: 1
+  name: logs
+  folder: Alerts
+  interval: 1m
+  rules:
+  - uid: logs-error-burst
+    title: Error burst in logs
+    condition: C
+    for: 0s
+    noDataState: OK
+    execErrState: Error
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ $labels.host }} logged {{ printf "%.0f" $values.B.Value }} errors in 5 minutes'
+      description: More than 10 error-level log lines in 5 minutes. Check the Logs Overview dashboard.
+    data:
+    - refId: A
+      relativeTimeRange: &id009
+        from: 600
+        to: 0
+      datasourceUid: loki-uid
+      model:
+        datasource:
+          type: loki
+          uid: loki-uid
+        editorMode: code
+        expr: 'sum by (host) (count_over_time({job=~".+", host=~".+"} != `caller=metrics.go` !~ `(?i)cancel|logger=plugin\.loki|caller=scheduler_processor\.go|failed to update managedFields|write: broken pipe` |~ `(?i)err|fatal|panic|crit|emerg` |~ `(?i:\blevel[=:]\s*"?(error|err|fatal|panic|critical|crit|emerg)\b|"(severity|level|lvl)"\s*:\s*"(error|err|fatal|panic|critical|crit|emerg)"|\[(error|err|fatal|panic|critical)\])|(?-i:^(\S+\s+){0,2}(ERROR|FATAL|CRITICAL|PANIC)\b)` [5m]))'
+        queryType: instant
+        refId: A
+    - refId: B
+      relativeTimeRange: *id009
+      datasourceUid: __expr__
+      model:
+        type: reduce
+        expression: A
+        reducer: last
+        refId: B
+        settings:
+          mode: dropNN
+        datasource: *id002
+    - refId: C
+      relativeTimeRange: *id009
+      datasourceUid: __expr__
+      model:
+        type: threshold
+        expression: B
+        refId: C
+        datasource: *id002
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 10
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            params: []
+            type: last
+          type: query
