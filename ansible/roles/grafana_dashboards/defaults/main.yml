@@ -1,7 +1,12 @@
 ---
 # Директории Grafana
 grafana_provisioning_dir: /etc/grafana/provisioning
-grafana_dashboards_dir: /var/lib/grafana/dashboards
+# ВАЖНО: отдельный подкаталог. Провайдеры Grafana читают каталог рекурсивно,
+# а /var/lib/grafana/dashboards/project принадлежит провайдеру роли
+# monitoring_server. Если указать родительский каталог, один и тот же файл
+# (project-overview.json) попадёт под два провайдера -> дубль uid -> Grafana
+# блокирует запись дашбордов обоих провайдеров.
+grafana_dashboards_dir: /var/lib/grafana/dashboards/ansible
 
 # Дашборды проекта (лежат в files/dashboards/ внутри роли).
 # Имя файла = uid дашборда.
@@ -12,6 +17,11 @@ grafana_dashboard_files:
 # Удалять из grafana_dashboards_dir все *.json, которых нет в списке выше
 # (чистит ранее скачанные дашборды). Grafana сама уберёт их из UI.
 grafana_dashboards_purge_unmanaged: true
+
+# Файлы, которые ранее лежали в родительском каталоге (старое расположение)
+grafana_legacy_dashboard_files:
+  - /var/lib/grafana/dashboards/alloy-host-overview.json
+  - /var/lib/grafana/dashboards/alloy-logs-overview.json
 
 # Хвосты старой версии роли в /tmp на целевом хосте (скачивание + фикс-скрипт)
 grafana_legacy_tmp_files:

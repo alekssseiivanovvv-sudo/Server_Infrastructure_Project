@@ -76,8 +76,8 @@
     label: "{{ item.path }}"
   when: grafana_dashboards_purge_unmanaged | bool
 
-- name: Remove leftovers of the old download/fix workflow from /tmp
+- name: Remove leftovers of the old locations and download/fix workflow
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent
-  loop: "{{ grafana_legacy_tmp_files }}"
+  loop: "{{ grafana_legacy_dashboard_files + grafana_legacy_tmp_files }}"
