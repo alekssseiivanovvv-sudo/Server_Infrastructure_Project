@@ -40,83 +40,44 @@
   notify: Restart Grafana
 
 # ------------------------------------------------------------------
-# Скачиваем дашборды Alloy по прямым URL
+# Дашборды проекта
+# Копируем как есть (copy, не template): в JSON есть {{ }} в легендах
+# Grafana, которые Jinja2 иначе попытался бы раскрыть.
+# Перезапуск не нужен: провайдер перечитывает каталог раз в
+# updateIntervalSeconds (см. dashboards.yml.j2).
 # ------------------------------------------------------------------
-- name: Download Alloy mixin dashboards from GitHub
-  ansible.builtin.get_url:
-    url: "{{ item.url }}"
-    dest: "/tmp/{{ item.name }}.json"
-    mode: '0644'
-    force: true
-  loop: "{{ grafana_url_dashboards }}"
-  register: alloy_downloaded
-
-- name: Replace datasource placeholders in Alloy dashboards
-  ansible.builtin.replace:
-    path: "/tmp/{{ item.item.name }}.json"
-    regexp: '\$\{DS_[A-Z0-9_-]+\}'
-    replace: "{{ item.item.datasource }}"
-  loop: "{{ alloy_downloaded.results }}"
-  when: item.changed
-
-- name: Copy Alloy dashboards into Grafana directory
+- name: Deploy project dashboards
   ansible.builtin.copy:
-    src: "/tmp/{{ item.name }}.json"
-    dest: "{{ grafana_dashboards_dir }}/{{ item.name }}.json"
-    remote_src: true
+    src: "dashboards/{{ item }}"
+    dest: "{{ grafana_dashboards_dir }}/{{ item }}"
     owner: grafana
     group: grafana
     mode: '0644'
-  loop: "{{ grafana_url_dashboards }}"
-  notify: Restart Grafana
+  loop: "{{ grafana_dashboard_files }}"
 
 # ------------------------------------------------------------------
-# Скачиваем дашборды с grafana.com по ID
+# Чистка: старые скачанные дашборды и временные файлы
 # ------------------------------------------------------------------
-- name: Download dashboards from grafana.com
-  ansible.builtin.get_url:
-    url: "https://grafana.com/api/dashboards/{{ item.id }}/revisions/latest/download"
-    dest: "/tmp/{{ item.name }}.json"
-    mode: '0644'
-    force: true
-  loop: "{{ grafana_dashboards }}"
-  register: downloaded
+- name: Find dashboards not managed by this role
+  ansible.builtin.find:
+    paths: "{{ grafana_dashboards_dir }}"
+    patterns: "*.json"
+    excludes: "{{ grafana_dashboard_files }}"
+    recurse: true
+  register: grafana_unmanaged_dashboards
+  when: grafana_dashboards_purge_unmanaged | bool
 
-- name: Replace datasource placeholders in downloaded dashboards
-  ansible.builtin.replace:
-    path: "/tmp/{{ item.item.name }}.json"
-    regexp: '\$\{DS_[A-Z0-9_-]+\}'
-    replace: "{{ item.item.datasource }}"
-  loop: "{{ downloaded.results }}"
-  when: item.changed
+- name: Remove dashboards not managed by this role
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ grafana_unmanaged_dashboards.files | default([]) }}"
+  loop_control:
+    label: "{{ item.path }}"
+  when: grafana_dashboards_purge_unmanaged | bool
 
-- name: Copy downloaded dashboards into Grafana directory
-  ansible.builtin.copy:
-    src: "/tmp/{{ item.name }}.json"
-    dest: "{{ grafana_dashboards_dir }}/{{ item.name }}.json"
-    remote_src: true
-    owner: grafana
-    group: grafana
-    mode: '0644'
-  loop: "{{ grafana_dashboards }}"
-  notify: Restart Grafana
-
-# ------------------------------------------------------------------
-# Фикс-скрипт для дашбордов
-# ------------------------------------------------------------------
-- name: Copy dashboard fix script
-  ansible.builtin.copy:
-    src: fix_dashboards.py
-    dest: /tmp/fix_dashboards.py
-    mode: '0755'
-
-- name: Apply dashboard fixes
-  ansible.builtin.command:
-    cmd: python3 /tmp/fix_dashboards.py {{ grafana_dashboards_dir }}
-  register: fix_result
-  changed_when: fix_result.stdout | length > 0
-  notify: Restart Grafana
-
-- name: Show fix script output
-  ansible.builtin.debug:
-    var: fix_result.stdout_lines
+- name: Remove leftovers of the old download/fix workflow from /tmp
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ grafana_legacy_tmp_files }}"

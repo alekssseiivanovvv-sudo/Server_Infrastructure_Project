@@ -1,0 +1,640 @@
+{
+  "uid": "alloy-logs-overview",
+  "title": "Logs Overview",
+  "tags": [
+    "alloy",
+    "loki",
+    "logs"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "1m",
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "graphTooltip": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "label": "Data source",
+        "type": "datasource",
+        "query": "loki",
+        "current": {},
+        "hide": 0
+      },
+      {
+        "name": "job",
+        "label": "Job",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "${datasource}"
+        },
+        "query": {
+          "label": "job",
+          "refId": "job",
+          "stream": "",
+          "type": 1
+        },
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".+",
+        "current": {},
+        "sort": 1
+      },
+      {
+        "name": "host",
+        "label": "Host",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "${datasource}"
+        },
+        "query": {
+          "label": "host",
+          "refId": "host",
+          "stream": "{job=~\"$job\"}",
+          "type": 1
+        },
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {},
+        "sort": 1
+      },
+      {
+        "name": "search",
+        "label": "Search",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Errors (selected range)",
+      "description": "",
+      "datasource": {
+        "type": "loki",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(count_over_time({job=~\"$job\", host=~\"$host\"} != `caller=metrics.go` !~ `(?i)cancel|logger=plugin\\.loki|caller=scheduler_processor\\.go|failed to update managedFields|write: broken pipe` |~ `(?i)err|fatal|panic|crit|emerg` |~ `(?i:\\blevel[=:]\\s*\"?(error|err|fatal|panic|critical|crit|emerg)\\b|\"(severity|level|lvl)\"\\s*:\\s*\"(error|err|fatal|panic|critical|crit|emerg)\"|\\[(error|err|fatal|panic|critical)\\])|(?-i:^(\\S+\\s+){0,2}(ERROR|FATAL|CRITICAL|PANIC)\\b)` |~ `(?i)$search` [$__range]))",
+          "legendFormat": "",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Errors (last 5m)",
+      "description": "Current state: anything above 0 means something is failing right now.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(count_over_time({job=~\"$job\", host=~\"$host\"} != `caller=metrics.go` !~ `(?i)cancel|logger=plugin\\.loki|caller=scheduler_processor\\.go|failed to update managedFields|write: broken pipe` |~ `(?i)err|fatal|panic|crit|emerg` |~ `(?i:\\blevel[=:]\\s*\"?(error|err|fatal|panic|critical|crit|emerg)\\b|\"(severity|level|lvl)\"\\s*:\\s*\"(error|err|fatal|panic|critical|crit|emerg)\"|\\[(error|err|fatal|panic|critical)\\])|(?-i:^(\\S+\\s+){0,2}(ERROR|FATAL|CRITICAL|PANIC)\\b)` |~ `(?i)$search` [5m]))",
+          "legendFormat": "",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 20
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Warnings (selected range)",
+      "description": "",
+      "datasource": {
+        "type": "loki",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(count_over_time({job=~\"$job\", host=~\"$host\"} != `caller=metrics.go` !~ `(?i)cancel|logger=plugin\\.loki|caller=scheduler_processor\\.go|failed to update managedFields|write: broken pipe` |~ `(?i)warn` |~ `(?i:\\blevel[=:]\\s*\"?(warn|warning)\\b|\"(severity|level|lvl)\"\\s*:\\s*\"(warn|warning)\"|\\[(warn|warning)\\])|(?-i:^(\\S+\\s+){0,2}(WARN|WARNING)\\b)` |~ `(?i)$search` [$__range]))",
+          "legendFormat": "",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Error ratio",
+      "description": "Share of all log lines that look like errors.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${datasource}"
+          },
+          "expr": "(sum(count_over_time({job=~\"$job\", host=~\"$host\"} != `caller=metrics.go` !~ `(?i)cancel|logger=plugin\\.loki|caller=scheduler_processor\\.go|failed to update managedFields|write: broken pipe` |~ `(?i)err|fatal|panic|crit|emerg` |~ `(?i:\\blevel[=:]\\s*\"?(error|err|fatal|panic|critical|crit|emerg)\\b|\"(severity|level|lvl)\"\\s*:\\s*\"(error|err|fatal|panic|critical|crit|emerg)\"|\\[(error|err|fatal|panic|critical)\\])|(?-i:^(\\S+\\s+){0,2}(ERROR|FATAL|CRITICAL|PANIC)\\b)` [$__range])) or vector(0)) / sum(count_over_time({job=~\"$job\", host=~\"$host\"} [$__range])) * 100",
+          "legendFormat": "",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "noValue": "0",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "interval": "1m",
+      "title": "Errors over time",
+      "datasource": {
+        "type": "loki",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 0,
+        "y": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (host) (count_over_time({job=~\"$job\", host=~\"$host\"} != `caller=metrics.go` !~ `(?i)cancel|logger=plugin\\.loki|caller=scheduler_processor\\.go|failed to update managedFields|write: broken pipe` |~ `(?i)err|fatal|panic|crit|emerg` |~ `(?i:\\blevel[=:]\\s*\"?(error|err|fatal|panic|critical|crit|emerg)\\b|\"(severity|level|lvl)\"\\s*:\\s*\"(error|err|fatal|panic|critical|crit|emerg)\"|\\[(error|err|fatal|panic|critical)\\])|(?-i:^(\\S+\\s+){0,2}(ERROR|FATAL|CRITICAL|PANIC)\\b)` |~ `(?i)$search` [$__interval]))",
+          "legendFormat": "{{host}}",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "interval": "1m",
+      "title": "Errors vs warnings",
+      "datasource": {
+        "type": "loki",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(count_over_time({job=~\"$job\", host=~\"$host\"} != `caller=metrics.go` !~ `(?i)cancel|logger=plugin\\.loki|caller=scheduler_processor\\.go|failed to update managedFields|write: broken pipe` |~ `(?i)err|fatal|panic|crit|emerg` |~ `(?i:\\blevel[=:]\\s*\"?(error|err|fatal|panic|critical|crit|emerg)\\b|\"(severity|level|lvl)\"\\s*:\\s*\"(error|err|fatal|panic|critical|crit|emerg)\"|\\[(error|err|fatal|panic|critical)\\])|(?-i:^(\\S+\\s+){0,2}(ERROR|FATAL|CRITICAL|PANIC)\\b)` |~ `(?i)$search` [$__interval]))",
+          "legendFormat": "errors",
+          "refId": "A",
+          "queryType": "range"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(count_over_time({job=~\"$job\", host=~\"$host\"} != `caller=metrics.go` !~ `(?i)cancel|logger=plugin\\.loki|caller=scheduler_processor\\.go|failed to update managedFields|write: broken pipe` |~ `(?i)warn` |~ `(?i:\\blevel[=:]\\s*\"?(warn|warning)\\b|\"(severity|level|lvl)\"\\s*:\\s*\"(warn|warning)\"|\\[(warn|warning)\\])|(?-i:^(\\S+\\s+){0,2}(WARN|WARNING)\\b)` |~ `(?i)$search` [$__interval]))",
+          "legendFormat": "warnings",
+          "refId": "B",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "errors"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "warnings"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "bargauge",
+      "title": "Top error sources",
+      "datasource": {
+        "type": "loki",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 8,
+        "x": 0,
+        "y": 12
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${datasource}"
+          },
+          "expr": "topk(10, sum by (host, job) (count_over_time({job=~\"$job\", host=~\"$host\"} != `caller=metrics.go` !~ `(?i)cancel|logger=plugin\\.loki|caller=scheduler_processor\\.go|failed to update managedFields|write: broken pipe` |~ `(?i)err|fatal|panic|crit|emerg` |~ `(?i:\\blevel[=:]\\s*\"?(error|err|fatal|panic|critical|crit|emerg)\\b|\"(severity|level|lvl)\"\\s*:\\s*\"(error|err|fatal|panic|critical|crit|emerg)\"|\\[(error|err|fatal|panic|critical)\\])|(?-i:^(\\S+\\s+){0,2}(ERROR|FATAL|CRITICAL|PANIC)\\b)` |~ `(?i)$search` [$__range])))",
+          "legendFormat": "{{host}} / {{job}}",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "no errors",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "logs",
+      "title": "Recent errors (repeats collapsed)",
+      "datasource": {
+        "type": "loki",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 16,
+        "x": 8,
+        "y": 12
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${datasource}"
+          },
+          "expr": "{job=~\"$job\", host=~\"$host\"} != `caller=metrics.go` !~ `(?i)cancel|logger=plugin\\.loki|caller=scheduler_processor\\.go|failed to update managedFields|write: broken pipe` |~ `(?i)err|fatal|panic|crit|emerg` |~ `(?i:\\blevel[=:]\\s*\"?(error|err|fatal|panic|critical|crit|emerg)\\b|\"(severity|level|lvl)\"\\s*:\\s*\"(error|err|fatal|panic|critical|crit|emerg)\"|\\[(error|err|fatal|panic|critical)\\])|(?-i:^(\\S+\\s+){0,2}(ERROR|FATAL|CRITICAL|PANIC)\\b)` |~ `(?i)$search`",
+          "legendFormat": "",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "signature",
+        "showCommonLabels": false,
+        "showLabels": false
+      }
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "All logs",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "panels": [
+        {
+          "id": 10,
+          "type": "logs",
+          "title": "All logs",
+          "datasource": {
+            "type": "loki",
+            "uid": "${datasource}"
+          },
+          "gridPos": {
+            "h": 14,
+            "w": 24,
+            "x": 0,
+            "y": 25
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "${datasource}"
+              },
+              "expr": "{job=~\"$job\", host=~\"$host\"} |~ `(?i)$search`",
+              "legendFormat": "",
+              "refId": "A",
+              "queryType": "range"
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "wrapLogMessage": true,
+            "prettifyLogMessage": false,
+            "enableLogDetails": true,
+            "sortOrder": "Descending",
+            "dedupStrategy": "none",
+            "showCommonLabels": false,
+            "showLabels": false
+          }
+        }
+      ]
+    }
+  ]
+}
