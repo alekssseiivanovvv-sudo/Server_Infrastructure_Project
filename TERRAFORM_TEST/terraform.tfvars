@@ -18,11 +18,11 @@ vm-routers = {
     lan_bridge = "cloud-lan"
     lan_mac    = "52:54:00:74:01:02"
 
-    autostart = true
-    console = true
-    console_type = "serial"
+    autostart           = true
+    console             = true
+    console_type        = "serial"
     console_target_type = "pty"
-    console_port = 1
+    console_port        = 0
   }
 
   east_router = {
@@ -40,11 +40,11 @@ vm-routers = {
     lan_bridge = "east-lan"
     lan_mac    = "52:54:00:72:01:02"
 
-    autostart = true
-    console = true
-    console_type = "serial"
+    autostart           = true
+    console             = true
+    console_type        = "serial"
     console_target_type = "pty"
-    console_port = 1
+    console_port        = 0
   }
 
   west_router = {
@@ -62,11 +62,11 @@ vm-routers = {
     lan_bridge = "west-lan"
     lan_mac    = "52:54:00:73:01:02"
 
-    autostart = true
-    console = true
-    console_type = "serial"
+    autostart           = true
+    console             = true
+    console_type        = "serial"
     console_target_type = "pty"
-    console_port = 1
+    console_port        = 0
   }
 }
 
@@ -83,13 +83,13 @@ vm-servers = {
     base_image = "ubuntu"
     cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
-    lan_network = "east-lan"
-    lan_mac     = "52:54:00:72:02:01"
-    autostart   = true
-    console = true
-    console_type = "serial"
+    lan_network         = "east-lan"
+    lan_mac             = "52:54:00:72:02:01"
+    autostart           = true
+    console             = true
+    console_type        = "serial"
     console_target_type = "pty"
-    console_port = 1
+    console_port        = 1
   }
   west-db = {
     host              = "host_2"
@@ -101,13 +101,13 @@ vm-servers = {
     base_image = "ubuntu"
     cloud_init = "$/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
-    lan_network = "west-lan"
-    lan_mac     = "52:54:00:73:02:01"
-    autostart   = true
-    console = true
-    console_type = "serial"
+    lan_network         = "west-lan"
+    lan_mac             = "52:54:00:73:02:01"
+    autostart           = true
+    console             = true
+    console_type        = "serial"
     console_target_type = "pty"
-    console_port = 1
+    console_port        = 1
   }
   cloud-quorum = {
     host              = "host_1"
@@ -119,13 +119,13 @@ vm-servers = {
     base_image = "ubuntu"
     cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
-    lan_network = "cloud-lan"
-    lan_mac     = "52:54:00:74:02:01"
-    autostart   = true
-    console = true
-    console_type = "serial"
+    lan_network         = "cloud-lan"
+    lan_mac             = "52:54:00:74:02:01"
+    autostart           = true
+    console             = true
+    console_type        = "serial"
     console_target_type = "pty"
-    console_port = 1
+    console_port        = 1
   }
 
   east-storage = {
@@ -150,13 +150,13 @@ vm-servers = {
     base_image = "ubuntu"
     cloud_init = "$/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
-    lan_network = "east-lan"
-    lan_mac     = "52:54:00:72:03:01"
-    autostart   = true
-    console = true
-    console_type = "serial"
+    lan_network         = "east-lan"
+    lan_mac             = "52:54:00:72:03:01"
+    autostart           = true
+    console             = true
+    console_type        = "serial"
     console_target_type = "pty"
-    console_port = 1
+    console_port        = 1
   }
 
   west-storage = {
@@ -181,13 +181,13 @@ vm-servers = {
     base_image = "ubuntu"
     cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
-    lan_network = "west-lan"
-    lan_mac     = "52:54:00:73:03:01"
-    autostart   = true
-    console = true
-    console_type = "serial"
+    lan_network         = "west-lan"
+    lan_mac             = "52:54:00:73:03:01"
+    autostart           = true
+    console             = true
+    console_type        = "serial"
     console_target_type = "pty"
-    console_port = 1
+    console_port        = 1
   }
 
   s3-storage = {
@@ -212,13 +212,13 @@ vm-servers = {
     base_image = "ubuntu"
     cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
-    lan_network = "cloud-lan"
-    lan_mac     = "52:54:00:74:03:01"
-    autostart   = true
-    console = true
-    console_type = "serial"
+    lan_network         = "cloud-lan"
+    lan_mac             = "52:54:00:74:03:01"
+    autostart           = true
+    console             = true
+    console_type        = "serial"
     console_target_type = "pty"
-    console_port = 1
+    console_port        = 1
   }
 
   east-web = {
@@ -231,13 +231,13 @@ vm-servers = {
     base_image = "alpine"
     cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
-    lan_network = "east-lan"
-    lan_mac     = "52:54:00:72:04:01"
-    autostart   = true
-    console = true
-    console_type = "serial"
+    lan_network         = "east-lan"
+    lan_mac             = "52:54:00:72:04:01"
+    autostart           = true
+    console             = true
+    console_type        = "serial"
     console_target_type = "pty"
-    console_port = 1
+    console_port        = 1
   }
 
   west-web = {
@@ -250,13 +250,13 @@ vm-servers = {
     base_image = "alpine"
     cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
-    lan_network = "west-lan"
-    lan_mac     = "52:54:00:73:04:01"
-    autostart   = true
-    console = true
-    console_type = "serial"
+    lan_network         = "west-lan"
+    lan_mac             = "52:54:00:73:04:01"
+    autostart           = true
+    console             = true
+    console_type        = "serial"
     console_target_type = "pty"
-    console_port = 1
+    console_port        = 1
   }
 
   cloud-load-balancer = {
@@ -269,13 +269,13 @@ vm-servers = {
     base_image = "alpine"
     cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
-    lan_network = "cloud-lan"
-    lan_mac     = "52:54:00:74:04:01"
-    autostart   = true
-    console = true
-    console_type = "serial"
+    lan_network         = "cloud-lan"
+    lan_mac             = "52:54:00:74:04:01"
+    autostart           = true
+    console             = true
+    console_type        = "serial"
     console_target_type = "pty"
-    console_port = 1
+    console_port        = 1
   }
 
   cloud-monitoring = {
@@ -288,12 +288,12 @@ vm-servers = {
     base_image = "ubuntu"
     cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
     #network configuration
-    lan_network = "cloud-lan"
-    lan_mac     = "52:54:00:74:05:01"
-    autostart   = true
-    console = true
-    console_type = "serial"
+    lan_network         = "cloud-lan"
+    lan_mac             = "52:54:00:74:05:01"
+    autostart           = true
+    console             = true
+    console_type        = "serial"
     console_target_type = "pty"
-    console_port = 1
+    console_port        = 1
   }
 }

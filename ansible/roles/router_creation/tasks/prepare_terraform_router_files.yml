@@ -1,0 +1,110 @@
+---
+# Included by 18_prepare_terraform_router_images.yml.
+# Expected variables are the same as in router_creation plus router_source_image.
+
+- name: Install tools for cloud-init seed creation
+  ansible.builtin.package:
+    name:
+      - cloud-image-utils
+      - qemu-utils
+    state: present
+
+- name: Verify source router image exists
+  ansible.builtin.stat:
+    path: "{{ router_source_image }}"
+  register: router_source_image_stat
+
+- name: Stop when source router image is missing
+  ansible.builtin.assert:
+    that: router_source_image_stat.stat.exists
+    fail_msg: "Source image is missing: {{ router_source_image }}"
+
+- name: Create Terraform router directory
+  ansible.builtin.file:
+    path: "{{ router_directory }}"
+    state: directory
+    owner: root
+    group: kvm
+    mode: "0750"
+
+- name: Create private cloud-init directory
+  ansible.builtin.file:
+    path: "{{ router_directory }}/cloud-init"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Select ansible_admin from Vault
+  ansible.builtin.set_fact:
+    selected_admin_users: "{{ vault_admin_users | selectattr('name', 'equalto', 'ansible_admin') | list }}"
+  no_log: true
+
+- name: Check administrator selection
+  ansible.builtin.assert:
+    that: selected_admin_users | length == 1
+    fail_msg: Vault must contain exactly one ansible_admin account.
+
+- name: Generate cloud-init files from router templates
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/roles/router_creation/templates/{{ item }}.j2"
+    dest: "{{ router_directory }}/cloud-init/{{ item }}"
+    owner: root
+    group: root
+    mode: "0600"
+  loop:
+    - user-data
+    - meta-data
+    - network-config
+  no_log: true
+  diff: false
+
+- name: Create independent router disk for Terraform
+  ansible.builtin.command:
+    argv:
+      - qemu-img
+      - convert
+      - -f
+      - qcow2
+      - -O
+      - qcow2
+      - "{{ router_source_image }}"
+      - "{{ router_disk }}"
+    creates: "{{ router_disk }}"
+
+- name: Set router disk permissions
+  ansible.builtin.file:
+    path: "{{ router_disk }}"
+    owner: libvirt-qemu
+    group: kvm
+    mode: "0600"
+
+- name: Create cloud-init seed ISO for Terraform
+  ansible.builtin.command:
+    argv:
+      - cloud-localds
+      - "--network-config={{ router_directory }}/cloud-init/network-config"
+      - "{{ router_directory }}/seed.iso"
+      - "{{ router_directory }}/cloud-init/user-data"
+      - "{{ router_directory }}/cloud-init/meta-data"
+  no_log: true
+
+- name: Set seed ISO permissions
+  ansible.builtin.file:
+    path: "{{ router_directory }}/seed.iso"
+    owner: root
+    group: kvm
+    mode: "0640"
+
+- name: Verify Terraform router files
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ router_disk }}"
+    - "{{ router_directory }}/seed.iso"
+  register: terraform_router_files
+
+- name: Assert Terraform router files are ready
+  ansible.builtin.assert:
+    that: terraform_router_files.results | map(attribute='stat.exists') | min
+    fail_msg: "Terraform router files were not created for {{ router_name }}."

@@ -1,3 +1,10 @@
+###############################################################################
+# Router domains
+#
+# Ansible prepares the router disk and its cloud-init ISO. Terraform only
+# defines and starts the libvirt domains using the values in terraform.tfvars.
+###############################################################################
+
 locals {
   # Provider aliases cannot be selected dynamically. The routers are therefore
   # split by hypervisor, while their common device configuration stays here.
@@ -9,13 +16,6 @@ locals {
   host_2_routers = {
     for key, router in var.vm-routers : key => router
     if router.host == "host_2"
-  }
-
-  router_os = {
-    type         = "hvm"
-    type_arch    = "x86_64"
-    type_machine = "q35"
-    boot_devices = ["hd"]
   }
 
   router_devices = {
@@ -47,22 +47,21 @@ locals {
 
       interfaces = [
         {
-          type  = "network"
-          mac   = { address = router.wan_mac }
-          model = { type = "virtio" }
+          type   = "network"
+          mac    = { address = router.wan_mac }
+          model  = { type = "virtio" }
           source = { network = { network = router.wan_bridge } }
         },
         {
-          type  = "network"
-          mac   = { address = router.lan_mac }
-          model = { type = "virtio" }
+          type   = "network"
+          mac    = { address = router.lan_mac }
+          model  = { type = "virtio" }
           source = { network = { network = router.lan_bridge } }
         }
       ]
 
       consoles = router.console ? [
         {
-          source = { pty = {} }
           target = {
             type = router.console_type
             port = router.console_port
@@ -79,12 +78,12 @@ resource "libvirt_domain" "routers_host_1" {
 
   name        = each.value.name
   type        = "kvm"
-  memory      = each.value.ram * 1024 # Provider 0.9.x expects KiB.
-  memory_unit = "KiB"
+  memory      = each.value.ram
+  memory_unit = "MiB"
   vcpu        = each.value.vcpus
   autostart   = each.value.autostart
   running     = true
-  os          = local.router_os
+  os          = { type = "hvm" }
   devices     = local.router_devices[each.key]
 
   depends_on = [libvirt_network.cloud_lan, libvirt_network.east_lan]
@@ -96,12 +95,12 @@ resource "libvirt_domain" "routers_host_2" {
 
   name        = each.value.name
   type        = "kvm"
-  memory      = each.value.ram * 1024 # Provider 0.9.x expects KiB.
-  memory_unit = "KiB"
+  memory      = each.value.ram
+  memory_unit = "MiB"
   vcpu        = each.value.vcpus
   autostart   = each.value.autostart
   running     = true
-  os          = local.router_os
+  os          = { type = "hvm" }
   devices     = local.router_devices[each.key]
 
   depends_on = [libvirt_network.west_lan]

@@ -1,4 +1,4 @@
-# isolated networks. current format is for newer versions of libvirt provider. For older versions, see the commented-out code below.
+# isolated networks. current format is for newer versions of libvirt provider.
 
 #host 1
 resource "libvirt_network" "east_lan" {
