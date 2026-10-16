@@ -39,8 +39,13 @@ loki.source.file "system_logs" {
 
 {% if alloy_docker_enabled | bool %}
 prometheus.exporter.cadvisor "docker" {
-  docker_host      = "unix:///var/run/docker.sock"
-  storage_duration = "5m"
+  docker_host          = "unix:///var/run/docker.sock"
+  # Docker 29+ uses the containerd image store (overlayfs snapshotter): cAdvisor
+  # must ask Docker's own containerd (namespace "moby") for container layers,
+  # otherwise it skips every container and reports only host/system cgroups.
+  containerd_host      = "{{ alloy_containerd_socket | default('/run/docker/containerd/containerd.sock') }}"
+  containerd_namespace = "moby"
+  storage_duration     = "5m"
 }
 
 prometheus.scrape "docker_metrics" {

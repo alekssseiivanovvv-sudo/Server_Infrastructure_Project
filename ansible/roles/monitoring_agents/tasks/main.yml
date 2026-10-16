@@ -23,6 +23,20 @@
   notify: Restart alloy
   when: ansible_facts.distribution == "Alpine"
 
+# cAdvisor (prometheus.exporter.cadvisor) talks to Docker's own containerd
+# socket (/run/docker/containerd/containerd.sock, root-only) to read container
+# layers. Without access it silently skips every container.
+- name: Run Alloy as root on Alpine Docker hosts (cAdvisor needs /var/lib/docker)
+  ansible.builtin.lineinfile:
+    path: /etc/conf.d/alloy
+    regexp: '^#?command_user='
+    line: 'command_user="root:root"'
+  when:
+    - ansible_facts.distribution == "Alpine"
+    - alloy_docker_enabled | bool
+    - alloy_run_as_root_for_docker | default(true) | bool
+  notify: Restart alloy
+
 - name: Install Ubuntu Alloy repository dependencies
   ansible.builtin.apt:
     name:
