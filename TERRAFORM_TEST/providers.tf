@@ -3,7 +3,7 @@ terraform {
   required_providers {
     libvirt = {
       source  = "dmacvicar/libvirt"
-      version = "~> 0.8"
+      version = "= 0.9.9"
     }
   }
 }
@@ -15,5 +15,5 @@ provider "libvirt" {
 
 provider "libvirt" {
   alias = "host_2"
-  uri   = "qemu+ssh://ansible_admin@100.64.0.12/system"
+  uri   = "qemu+ssh://ansible_admin@100.64.0.11/system"
 }

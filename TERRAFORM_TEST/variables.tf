@@ -1,55 +1,43 @@
 variable "images_dir" {
-  description = "The directory where the images are stored."
+  description = "Directory for VM disks and cloud-init seed ISOs."
   type        = string
   default     = "/var/lib/libvirt/images"
+}
+
+variable "templates_dir" {
+  description = "Directory with immutable base cloud images."
+  type        = string
+  default     = "/var/lib/libvirt/images/templates"
 }
 
 variable "ubuntu_image" {
-  description = "The Ubuntu image to use for the virtual machine."
+  description = "Ubuntu cloud-image template."
   type        = string
-  default     = "${var.images_dir}/ubuntu-26.04-server-cloudimg-amd64.img"
-}
-
-variable "ubuntu_default_cloud_init" {
-  description = "The default cloud-init configuration to use for the Ubuntu virtual machine."
-  type        = string
-  default     = "${var.images_dir}/ubuntu-26.04-server-cloudimg-amd64-cloudinit.iso" #!!!путь надо будет обновить после доработки Ansible!!!
-}
-
-variable "apline_default_cloud_init" {
-  description = "The default cloud-init configuration to use for the Alpine virtual machine."
-  type        = string
-  default     = "${var.images_dir}/alpine-3.24.2-x86_64-cloudinit-r0.iso" #!!!путь надо будет обновить после доработки Ansible!!!
+  default     = "${var.templates_dir}/templates/ubuntu-26.04-server-cloudimg-amd64.img"
 }
 
 variable "alpine_image" {
-  description = "The Alpine image to use for the virtual machine."
+  description = "Alpine cloud-image template."
   type        = string
-  default     = "${var.images_dir}/alpine-3.24.2-x86_64-cloudinit-r0.qcow2"
+  default     = "${var.templates_dir}/templates/alpine-3.24.2-x86_64-cloudinit-r0.qcow2"
 }
 
-variable "ansible_public_key" {
-  description = "The public key to use for Ansible access."
+variable "ubuntu_default_cloud_init" {
+  description = "Fallback Ubuntu cloud-init seed ISO."
   type        = string
-  default     = "~/.ssh/ansible.pub"
+  default     = "${var.images_dir}/ubuntu-default-seed.iso"
 }
 
-variable "ssh_port_host" {
-  description = "The SSH port to use for connecting to the virtual machine."
-  type        = number
-  default     = 22
-}
-
-variable "ssh_port_vm" {
-  description = "The SSH port to use for connecting to the virtual machine."
-  type        = number
-  default     = 2222 ## used to be secret variable
+variable "alpine_default_cloud_init" {
+  description = "Fallback Alpine cloud-init seed ISO."
+  type        = string
+  default     = "${var.images_dir}/alpine-default-seed.iso"
 }
 
 variable "storage_pool" {
-  description = "The name of the storage pool to use for the virtual machine."
+  description = "Libvirt storage pool for VM disks."
   type        = string
-  default     = "/var/lib/libvirt/images"
+  default     = "default"
 }
 
 variable "vm-routers" {
@@ -67,6 +55,10 @@ variable "vm-routers" {
     lan_bridge        = string               # The name of the LAN bridge to connect the router to
     lan_mac           = string               # The MAC address to assign to the router's LAN interface
     autostart        = optional(bool, true) # Whether to automatically start the router on host boot (default: true)
+    console = optional(bool, false) # Whether to enable console access to the router (default: false)
+    console_type = optional(string, "serial") # The type of console to use (default: serial)
+    console_target_type = optional(string, "pty") # The target type for the console (default: pty)
+    console_port = optional(number, 0) # The port to use for console access (default: 0, which means no console access)
   }))
 }
 
@@ -92,5 +84,9 @@ variable "vm-servers" {
     wan_network = optional(string)     # The name of the WAN bridge to connect the VM to (optional
     wan_mac    = optional(string)     # The MAC address to assign to the VM's WAN interface (optional
     autostart = optional(bool, true) # Whether to automatically start the VM on host boot (default: true)
+    console = optional(bool, false) # Whether to enable console access to the router (default: false)
+    console_type = optional(string, "serial") # The type of console to use (default: serial)
+    console_target_type = optional(string, "pty") # The target type for the console (default: pty)
+    console_port = optional(number, 0) # The port to use for console access (default: 0, which means no console access)
   }))
 }
