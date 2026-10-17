@@ -15,13 +15,13 @@ variable "templates_dir" {
 variable "ubuntu_image" {
   description = "Ubuntu cloud-image template."
   type        = string
-  default     = "/var/lib/libvirt/templates/ubuntu-26.04-server-cloudimg-amd64.img"
+  default     = "/var/lib/libvirt/images/templates/ubuntu-26.04-server-cloudimg-amd64.img"
 }
 
 variable "alpine_image" {
   description = "Alpine cloud-image template."
   type        = string
-  default     = "/var/lib/libvirt/templates/alpine-3.24.2-x86_64-cloudinit-r0.qcow2"
+  default     = "/var/lib/libvirt/images/templates/alpine-3.24.2-x86_64-cloudinit-r0.qcow2"
 }
 
 variable "ubuntu_default_cloud_init" {
@@ -77,7 +77,7 @@ variable "vm-servers" {
     extra_drives = optional(list(object({
       name = string # The name of the extra drive
       size = number # The size of each extra drive (in GB)
-    })))
+    })), [])
     base_image = string # The image to use for the VM
     cloud_init = string # The cloud-init configuration to use for the VM
     networks = object({
@@ -90,4 +90,19 @@ variable "vm-servers" {
     console_target_type = optional(string, "pty")    # The target type for the console (default: pty)
     console_port        = optional(number, 0)        # The port to use for console access (default: 0, which means no console access)
   }))
+}
+
+variable "enabled_hosts" {
+  description = "Hypervisors on which resources should be created."
+  type        = set(string)
+  default     = ["host_1", "host_2"]
+
+  validation {
+    condition = alltrue([
+      for host in var.enabled_hosts :
+      contains(["host_1", "host_2"], host)
+    ])
+
+    error_message = "Allowed hosts: host_1 and host_2."
+  }
 }
