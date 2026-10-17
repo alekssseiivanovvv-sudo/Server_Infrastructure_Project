@@ -23,7 +23,9 @@ module "servers_host_1" {
     }
   ]
 
-
+  depends_on = [
+    time_sleep.wait_after_routers
+  ]
 }
 
 module "servers_host_2" {
@@ -51,5 +53,7 @@ module "servers_host_2" {
     }
   ]
 
-
+  depends_on = [
+    time_sleep.wait_after_routers
+  ]
 }

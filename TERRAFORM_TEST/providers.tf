@@ -5,6 +5,10 @@ terraform {
       source  = "dmacvicar/libvirt"
       version = "= 0.9.9"
     }
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.13"
+    }
   }
 }
 

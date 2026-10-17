@@ -15,12 +15,13 @@ module "routers_host_1" {
   storage_pool_prefix = var.storage_pool
   autostart           = each.value.autostart
 
-interfaces = [
-  {
-    network = each.value.networks.lan.bridge
-    mac     = each.value.networks.lan.mac
-  }
-]
+  interfaces = [
+    {
+      network = each.value.networks.lan.bridge
+      mac     = each.value.networks.lan.mac
+    }
+  ]
+  depends_on = [libvirt_network.cloud_lan, libvirt_network.east_lan]
 }
 module "routers_host_2" {
   source   = "./modules/vm"
@@ -40,9 +41,10 @@ module "routers_host_2" {
   autostart           = each.value.autostart
 
   interfaces = [
-  {
-    network = each.value.networks.lan.bridge
-    mac     = each.value.networks.lan.mac
-  }
-]
+    {
+      network = each.value.networks.lan.bridge
+      mac     = each.value.networks.lan.mac
+    }
+  ]
+  depends_on = [libvirt_network.east_lan]
 }
