@@ -7,6 +7,7 @@ Repository for ours distributed server infrastructure project.
 Contains:
 - Ansible
 - Ansible Vault (encrypted)
+- Terraform
 - Cloud-init & VMs configurations
 - Docker container files
 - Database files
