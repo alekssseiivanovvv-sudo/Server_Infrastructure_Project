@@ -80,7 +80,7 @@ vm-routers = {
       }
 
       lan = {
-        bridge = "east-lan"
+        bridge = "west-lan"
         mac    = "52:54:00:73:01:02"
       }
     }

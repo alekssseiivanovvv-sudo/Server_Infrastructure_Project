@@ -18,15 +18,12 @@ module "servers_host_1" {
 
   interfaces = [
     {
-      network = each.value.lan_network
-      mac     = each.value.lan_mac
+      network = each.value.networks.lan.bridge
+      mac     = each.value.networks.lan.mac
     }
   ]
 
-  depends_on = [
-    module.routers_host_1,
-    module.routers_host_2
-  ]
+
 }
 
 module "servers_host_2" {
@@ -49,13 +46,10 @@ module "servers_host_2" {
 
   interfaces = [
     {
-      network = each.value.lan_network
-      mac     = each.value.lan_mac
+      network = each.value.networks.lan.bridge
+      mac     = each.value.networks.lan.mac
     }
   ]
 
-  depends_on = [
-    module.routers_host_1,
-    module.routers_host_2
-  ]
+
 }
