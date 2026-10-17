@@ -15,10 +15,17 @@ vm-routers = {
     base_image = "alpine"
     cloud_init = "/var/lib/libvirt/images/vms/cloud_router/seed.iso"
 
-    wan_bridge = "default"
-    wan_mac    = "52:54:00:74:01:01"
-    lan_bridge = "cloud-lan"
-    lan_mac    = "52:54:00:74:01:02"
+    networks = {
+      wan = {
+        bridge = "default"
+        mac    = "52:54:00:74:01:01"
+      }
+
+      lan = {
+        bridge = "cloud-lan"
+        mac    = "52:54:00:74:01:02"
+      }
+    }
 
     autostart           = true
     console             = true
@@ -37,10 +44,17 @@ vm-routers = {
     base_image = "alpine"
     cloud_init = "/var/lib/libvirt/images/vms/east_router/seed.iso"
     #network configuration
-    wan_bridge = "default"
-    wan_mac    = "52:54:00:72:01:01"
-    lan_bridge = "east-lan"
-    lan_mac    = "52:54:00:72:01:02"
+    networks = {
+      wan = {
+        bridge = "default"
+        mac    = "52:54:00:72:01:01"
+      }
+
+      lan = {
+        bridge = "east-lan"
+        mac    = "52:54:00:72:01:02"
+      }
+    }
 
     autostart           = true
     console             = true
@@ -59,10 +73,17 @@ vm-routers = {
     base_image = "alpine"
     cloud_init = "/var/lib/libvirt/images/vms/west_router/seed.iso"
     #network configuration
-    wan_bridge = "default"
-    wan_mac    = "52:54:00:73:01:01"
-    lan_bridge = "west-lan"
-    lan_mac    = "52:54:00:73:01:02"
+    networks = {
+      wan = {
+        bridge = "default"
+        mac    = "52:54:00:73:01:01"
+      }
+
+      lan = {
+        bridge = "east-lan"
+        mac    = "52:54:00:73:01:02"
+      }
+    }
 
     autostart           = true
     console             = true
@@ -83,16 +104,22 @@ vm-servers = {
     system_drive_size = 20
     #files added by ansible
     base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
-    #network configuration
-    lan_network         = "east-lan"
-    lan_mac             = "52:54:00:72:02:01"
+    cloud_init = "/var/lib/libvirt/images/east-db/seed.iso" # проверить путь после доработки Ansible
+
+    networks = {
+      lan = {
+        bridge = "east-lan"
+        mac    = "52:54:00:72:02:01"
+      }
+    }
+
     autostart           = true
     console             = true
     console_type        = "serial"
     console_target_type = "pty"
     console_port        = 1
   }
+
   west-db = {
     host              = "host_2"
     name              = "west-db"
@@ -101,16 +128,22 @@ vm-servers = {
     system_drive_size = 20
     #files added by ansible
     base_image = "ubuntu"
-    cloud_init = "$/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
-    #network configuration
-    lan_network         = "west-lan"
-    lan_mac             = "52:54:00:73:02:01"
+    cloud_init = "/var/lib/libvirt/images/west-db/seed.iso" # проверить путь после доработки Ansible
+
+    networks = {
+      lan = {
+        bridge = "west-lan"
+        mac    = "52:54:00:73:02:01"
+      }
+    }
+
     autostart           = true
     console             = true
     console_type        = "serial"
     console_target_type = "pty"
     console_port        = 1
   }
+
   cloud-quorum = {
     host              = "host_1"
     name              = "cloud-quorum"
@@ -119,10 +152,15 @@ vm-servers = {
     system_drive_size = 20
     #files added by ansible
     base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
-    #network configuration
-    lan_network         = "cloud-lan"
-    lan_mac             = "52:54:00:74:02:01"
+    cloud_init = "/var/lib/libvirt/images/cloud-quorum/seed.iso" # проверить путь после доработки Ansible
+
+    networks = {
+      lan = {
+        bridge = "cloud-lan"
+        mac    = "52:54:00:74:02:01"
+      }
+    }
+
     autostart           = true
     console             = true
     console_type        = "serial"
@@ -138,22 +176,25 @@ vm-servers = {
     system_drive_size = 20
     extra_drives = [
       {
-        name     = "east-storage-raid-1"
-        quantity = 1
-        size     = 15
+        name = "east-storage-raid-1"
+        size = 15
       },
       {
-        name     = "east-storage-raid-2"
-        quantity = 1
-        size     = 15
+        name = "east-storage-raid-2"
+        size = 15
       }
     ]
     #files added by ansible
     base_image = "ubuntu"
-    cloud_init = "$/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
-    #network configuration
-    lan_network         = "east-lan"
-    lan_mac             = "52:54:00:72:03:01"
+    cloud_init = "/var/lib/libvirt/images/east-storage/seed.iso" # проверить путь после доработки Ansible
+
+    networks = {
+      lan = {
+        bridge = "east-lan"
+        mac    = "52:54:00:72:03:01"
+      }
+    }
+
     autostart           = true
     console             = true
     console_type        = "serial"
@@ -179,10 +220,15 @@ vm-servers = {
     ]
     #files added by ansible
     base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
-    #network configuration
-    lan_network         = "west-lan"
-    lan_mac             = "52:54:00:73:03:01"
+    cloud_init = "/var/lib/libvirt/images/west-storage/seed.iso" # проверить путь после доработки Ansible
+
+    networks = {
+      lan = {
+        bridge = "west-lan"
+        mac    = "52:54:00:73:03:01"
+      }
+    }
+
     autostart           = true
     console             = true
     console_type        = "serial"
@@ -208,10 +254,15 @@ vm-servers = {
     ]
     #files added by ansible
     base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
-    #network configuration
-    lan_network         = "cloud-lan"
-    lan_mac             = "52:54:00:74:03:01"
+    cloud_init = "/var/lib/libvirt/images/s3-storage/seed.iso" # проверить путь после доработки Ansible
+
+    networks = {
+      lan = {
+        bridge = "cloud-lan"
+        mac    = "52:54:00:74:03:01"
+      }
+    }
+
     autostart           = true
     console             = true
     console_type        = "serial"
@@ -227,10 +278,15 @@ vm-servers = {
     system_drive_size = 20
     #files added by ansible
     base_image = "alpine"
-    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
-    #network configuration
-    lan_network         = "east-lan"
-    lan_mac             = "52:54:00:72:04:01"
+    cloud_init = "/var/lib/libvirt/images/east-web/seed.iso" # проверить путь после доработки Ansible
+
+    networks = {
+      lan = {
+        bridge = "east-lan"
+        mac    = "52:54:00:72:04:01"
+      }
+    }
+
     autostart           = true
     console             = true
     console_type        = "serial"
@@ -246,10 +302,15 @@ vm-servers = {
     system_drive_size = 20
     #files added by ansible
     base_image = "alpine"
-    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
-    #network configuration
-    lan_network         = "west-lan"
-    lan_mac             = "52:54:00:73:04:01"
+    cloud_init = "/var/lib/libvirt/images/west-web/seed.iso" # проверить путь после доработки Ansible
+
+    networks = {
+      lan = {
+        bridge = "west-lan"
+        mac    = "52:54:00:73:04:01"
+      }
+    }
+
     autostart           = true
     console             = true
     console_type        = "serial"
@@ -265,10 +326,15 @@ vm-servers = {
     system_drive_size = 20
     #files added by ansible
     base_image = "alpine"
-    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
-    #network configuration
-    lan_network         = "cloud-lan"
-    lan_mac             = "52:54:00:74:04:01"
+    cloud_init = "/var/lib/libvirt/images/cloud-load-balancer/seed.iso" # проверить путь после доработки Ansible
+
+    networks = {
+      lan = {
+        bridge = "cloud-lan"
+        mac    = "52:54:00:74:04:01"
+      }
+    }
+
     autostart           = true
     console             = true
     console_type        = "serial"
@@ -284,10 +350,15 @@ vm-servers = {
     system_drive_size = 30
     #files added by ansible
     base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/<имя-VM>-seed.iso" ## еще раз проверить путь после доработки Ansible
-    #network configuration
-    lan_network         = "cloud-lan"
-    lan_mac             = "52:54:00:74:05:01"
+    cloud_init = "/var/lib/libvirt/images/cloud-monitoring/seed.iso" # проверить путь после доработки Ansible
+
+    networks = {
+      lan = {
+        bridge = "cloud-lan"
+        mac    = "52:54:00:74:05:01"
+      }
+    }
+
     autostart           = true
     console             = true
     console_type        = "serial"
