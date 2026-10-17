@@ -79,24 +79,35 @@ resource "libvirt_domain" "vm" {
   autostart = var.autostart
   running   = true
 
-  os = {
-    type         = "hvm"
-    type_arch    = "x86_64"
-    type_machine = "q35"
+os = {
+  type         = "hvm"
+  type_arch    = "x86_64"
+  type_machine = "pc"
 
-    boot_devices = [
-      {
-        dev = "hd"
-      }
-    ]
-  }
+  boot_devices = [
+    {
+      dev = "hd"
+    }
+  ]
+}
 
   devices = {
-    disks = concat(
-      [local.system_disk],
-      local.extra_disks
-    )
+  disks = concat(
+    [local.system_disk],
+    local.extra_disks
+  )
 
-    interfaces = local.network_interfaces
-  }
+  interfaces = local.network_interfaces
+
+  consoles = var.console ? [
+    {
+      type = var.console_target_type
+
+      target = {
+        type = var.console_type
+        port = var.console_port
+      }
+    }
+  ] : []
+}
 }

@@ -14,6 +14,10 @@ module "routers_host_1" {
   images_dir          = var.images_dir
   storage_pool_prefix = var.storage_pool
   autostart           = each.value.autostart
+  console             = each.value.console
+  console_type        = each.value.console_type
+  console_target_type = each.value.console_target_type
+  console_port        = each.value.console_port
 
   interfaces = [
     {

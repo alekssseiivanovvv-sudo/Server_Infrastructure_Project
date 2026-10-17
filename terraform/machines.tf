@@ -15,6 +15,10 @@ module "servers_host_1" {
   storage_pool_prefix = var.storage_pool
   extra_drives        = each.value.extra_drives
   autostart           = each.value.autostart
+  console             = each.value.console
+  console_type        = each.value.console_type
+  console_target_type = each.value.console_target_type
+  console_port        = each.value.console_port
 
   interfaces = [
     {

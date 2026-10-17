@@ -47,3 +47,23 @@ variable "autostart" {
   type    = bool
   default = true
 }
+
+variable "console" {
+  type    = bool
+  default = true
+}
+
+variable "console_type" {
+  type    = string
+  default = "serial"
+}
+
+variable "console_target_type" {
+  type    = string
+  default = "pty"
+}
+
+variable "console_port" {
+  type    = number
+  default = 0
+}
