@@ -105,3 +105,21 @@ resource "libvirt_domain" "routers_host_2" {
 
   depends_on = [libvirt_network.west_lan]
 }
+
+resource "libvirt_pool" "routers_host_1" {
+  provider = libvirt.host_1
+  for_each = local.host_1_routers
+  name     = each.value.name
+  type     = "dir"
+  path     = "${var.images_dir}/vms/${each.value.name}"
+
+
+}
+
+resource "libvirt_pool" "routers_host_2" {
+  provider = libvirt.host_2
+  for_each = local.host_2_routers
+  name     = each.value.name
+  type     = "dir"
+  path     = "${var.images_dir}/vms/${each.value.name}"
+}

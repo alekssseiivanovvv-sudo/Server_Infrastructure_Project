@@ -1,3 +1,5 @@
+#tfvars
+
 images_dir   = "/var/lib/libvirt/images"
 storage_pool = "default"
 
@@ -167,14 +169,12 @@ vm-servers = {
     system_drive_size = 20
     extra_drives = [
       {
-        name     = "west-storage-backup-1"
-        quantity = 1
-        size     = 15
+        name = "west-storage-backup-1"
+        size = 15
       },
       {
-        name     = "west-storage-raid-1"
-        quantity = 1
-        size     = 15
+        name = "west-storage-raid-1"
+        size = 15
       }
     ]
     #files added by ansible
@@ -198,14 +198,12 @@ vm-servers = {
     system_drive_size = 20
     extra_drives = [
       {
-        name     = "s3-storage-raid-1"
-        quantity = 1
-        size     = 15
+        name = "s3-storage-raid-1"
+        size = 15
       },
       {
-        name     = "s3-storage-raid-2"
-        quantity = 1
-        size     = 15
+        name = "s3-storage-raid-2"
+        size = 15
       }
     ]
     #files added by ansible
