@@ -7,7 +7,7 @@ users:
     groups: [wheel]
     shell: /bin/ash
     lock_passwd: false
-    passwd: '$6$QBK0APohDq7STqCH$n1n9qLCeS4sQSK5Fo8QKOUG6metSV45zaLgLVvWnKQlLRyO6ici.QbobAGDd9sOuFfjXwOrNkn/9ezaDQZDhm.'
+    passwd: '$6$QBK0APohDq7STqCH$n1n9qLCeS4sQSK5Fo8QKOUG6metSV45zaLgLVvWnKQlLRyO6ici.QbobAGDd9sOuFfjXwOrNkn/9ezaDQZDhm.' #dummy password. Not used anywhere, however Alpine requires it.
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
     ssh_authorized_keys:
       - ${jsonencode(ssh_public_key)}
