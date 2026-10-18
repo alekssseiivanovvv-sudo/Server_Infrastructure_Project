@@ -111,3 +111,14 @@ etcd_servers
 
 [backup_storage_servers:children]
 fs_servers
+
+[ubuntu_servers:children]
+db_servers
+s3_servers
+monitoring_servers
+quorum_servers
+
+[alpine_servers:children]
+routers
+web_servers
+balance_servers

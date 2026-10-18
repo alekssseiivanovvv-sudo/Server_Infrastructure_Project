@@ -113,9 +113,100 @@
         state: reloaded
 
 
-# На всех VM, роутерах и cloud-машинах создаём ОБОИХ администраторов.
-# Публичный ключ каждого администратора берём с его host-компьютера.
-- name: Create human administrators on all infrastructure machines
+# Terraform recreates the VM host keys. Remove only infrastructure entries;
+# keep the host_1 and host_2 keys intact.
+- name: Clear stale infrastructure SSH host keys
+  hosts: hypervisor_hosts:automation_nodes
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  vars:
+    known_hosts_user: >-
+      {{
+        'ansible_admin'
+        if inventory_hostname in groups['automation_nodes']
+        else hardware_admin_user
+      }}
+    known_hosts_file: "/home/{{ known_hosts_user }}/.ssh/known_hosts"
+
+  tasks:
+    - name: Ensure SSH directory exists
+      ansible.builtin.file:
+        path: "/home/{{ known_hosts_user }}/.ssh"
+        state: directory
+        owner: "{{ known_hosts_user }}"
+        group: "{{ known_hosts_user }}"
+        mode: "0700"
+
+    - name: Ensure known_hosts file exists
+      ansible.builtin.file:
+        path: "{{ known_hosts_file }}"
+        state: touch
+        owner: "{{ known_hosts_user }}"
+        group: "{{ known_hosts_user }}"
+        mode: "0600"
+        access_time: preserve
+        modification_time: preserve
+
+    - name: Remove stale SSH keys stored without a port
+      ansible.builtin.known_hosts:
+        path: "{{ known_hosts_file }}"
+        name: "{{ known_host_name }}"
+        state: absent
+      vars:
+        known_host_name: >-
+          {{
+            hostvars[item.0].ansible_host | default(item.0)
+            if item.1 == 'address'
+            else (
+              item.0
+              if item.1 == 'inventory_name'
+              else item.0 | replace('_', '-')
+            )
+          }}
+      loop: >-
+        {{
+          (groups['infrastructure'] | default([]))
+          | product(['address', 'inventory_name', 'ssh_alias'])
+          | list
+        }}
+      loop_control:
+        label: "{{ known_host_name }}"
+
+    - name: Remove stale SSH keys stored with a custom port
+      ansible.builtin.known_hosts:
+        path: "{{ known_hosts_file }}"
+        name: "[{{ known_host_name }}]:{{ known_host_port }}"
+        state: absent
+      vars:
+        known_host_name: >-
+          {{
+            hostvars[item.0].ansible_host | default(item.0)
+            if item.1 == 'address'
+            else (
+              item.0
+              if item.1 == 'inventory_name'
+              else item.0 | replace('_', '-')
+            )
+          }}
+        known_host_port: >-
+          {{ hostvars[item.0].ansible_port | default(vault_ssh_port) }}
+      loop: >-
+        {{
+          (groups['infrastructure'] | default([]))
+          | product(['address', 'inventory_name', 'ssh_alias'])
+          | list
+        }}
+      loop_control:
+        label: "[{{ known_host_name }}]:{{ known_host_port }}"
+
+
+# Human administrators use SSH keys only. system_admin is the only account
+# with a working local password and is deliberately excluded from SSH.
+- name: Create administrators on all infrastructure machines
   hosts: infrastructure
   become: true
   gather_facts: true
@@ -127,6 +218,10 @@
     admin_key_sources:
       admin_aleksei: host_1
       admin_ilja: host_2
+    human_admin_users:
+      - admin_aleksei
+      - admin_ilja
+    console_admin_user: system_admin
 
   tasks:
     - name: Check that both host public keys are available
@@ -135,52 +230,110 @@
           - hostvars['host_1']['local_admin_public_key'] is defined
           - hostvars['host_2']['local_admin_public_key'] is defined
 
-    - name: Create both human administrators
+    - name: Select console administrator from Vault
+      ansible.builtin.set_fact:
+        selected_console_admins: >-
+          {{
+            vault_admin_users
+            | selectattr('name', 'equalto', console_admin_user)
+            | list
+          }}
+      no_log: true
+
+    - name: Check console administrator configuration
+      ansible.builtin.assert:
+        that:
+          - selected_console_admins | length == 1
+        fail_msg: >-
+          Vault must contain exactly one {{ console_admin_user }} account
+          with password_hash.
+
+    - name: Store console administrator configuration
+      ansible.builtin.set_fact:
+        selected_console_admin: "{{ selected_console_admins | first }}"
+      no_log: true
+
+    - name: Check console administrator password hash
+      ansible.builtin.assert:
+        that:
+          - selected_console_admin.password_hash is defined
+          - selected_console_admin.password_hash | length > 0
+        fail_msg: >-
+          {{ console_admin_user }} in Vault must contain password_hash.
+
+    - name: Create key-only human administrators
       ansible.builtin.user:
-        name: "{{ item.name }}"
-        password: "{{ item.password_hash }}"
+        name: "{{ item }}"
+        password: "!"
         update_password: always
         shell: "{{ '/bin/ash' if ansible_facts.distribution == 'Alpine' else '/bin/bash' }}"
         groups: "{{ ['wheel'] if ansible_facts.distribution == 'Alpine' else ['sudo'] }}"
         append: true
         create_home: true
         state: present
-      loop: >-
-        {{
-          vault_admin_users
-          | selectattr('name', 'in', ['admin_aleksei', 'admin_ilja'])
-          | list
-        }}
+      loop: "{{ human_admin_users }}"
+
+    - name: Create console-only system administrator
+      ansible.builtin.user:
+        name: "{{ console_admin_user }}"
+        password: "{{ selected_console_admin.password_hash }}"
+        update_password: always
+        shell: "{{ '/bin/ash' if ansible_facts.distribution == 'Alpine' else '/bin/bash' }}"
+        groups: "{{ ['wheel'] if ansible_facts.distribution == 'Alpine' else ['sudo'] }}"
+        append: true
+        create_home: true
+        state: present
       no_log: true
 
-    - name: Add both administrator public keys
+    - name: Add human administrator public keys
       ansible.posix.authorized_key:
-        user: "{{ item.name }}"
-        key: "{{ hostvars[admin_key_sources[item.name]]['local_admin_public_key'] }}"
+        user: "{{ item }}"
+        key: "{{ hostvars[admin_key_sources[item]]['local_admin_public_key'] }}"
         state: present
         manage_dir: true
-      loop:
-        - name: admin_aleksei
-        - name: admin_ilja
+      loop: "{{ human_admin_users }}"
       no_log: true
 
-    - name: Allow Ansible and both human administrators in SSH on Alpine
+    - name: Remove any SSH authorized keys from console administrator
+      ansible.builtin.file:
+        path: "/home/{{ console_admin_user }}/.ssh/authorized_keys"
+        state: absent
+
+    - name: Configure key-only SSH access on Alpine
       ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
-        regexp: '^AllowUsers\s+'
-        line: AllowUsers ansible_admin admin_aleksei admin_ilja
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
         insertafter: EOF
         validate: /usr/sbin/sshd -t -f %s
+      loop:
+        - regexp: '^PasswordAuthentication\s+'
+          line: PasswordAuthentication no
+        - regexp: '^KbdInteractiveAuthentication\s+'
+          line: KbdInteractiveAuthentication no
+        - regexp: '^PermitEmptyPasswords\s+'
+          line: PermitEmptyPasswords no
+        - regexp: '^PubkeyAuthentication\s+'
+          line: PubkeyAuthentication yes
+        - regexp: '^AuthenticationMethods\s+'
+          line: AuthenticationMethods publickey
+        - regexp: '^AllowUsers\s+'
+          line: AllowUsers ansible_admin admin_aleksei admin_ilja
       when: ansible_facts.distribution == 'Alpine'
       notify: Reload SSH on Alpine
 
-    - name: Allow Ansible and both human administrators in SSH on Ubuntu
+    - name: Configure key-only SSH access on Ubuntu
       ansible.builtin.copy:
         dest: /etc/ssh/sshd_config.d/90-infrastructure-users.conf
         owner: root
         group: root
         mode: "0644"
         content: |
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+          PermitEmptyPasswords no
+          PubkeyAuthentication yes
+          AuthenticationMethods publickey
           AllowUsers ansible_admin admin_aleksei admin_ilja
       when: ansible_facts.distribution != 'Alpine'
       notify: Reload SSH on Ubuntu
