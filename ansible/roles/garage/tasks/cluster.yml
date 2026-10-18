@@ -1,0 +1,144 @@
+---
+- name: Build the expected Garage node list
+  ansible.builtin.set_fact:
+    garage_expected_node_ids: >-
+      {{ groups['s3_servers'] | map('extract', hostvars, 'garage_node_id') | list }}
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Connect all Garage nodes through the coordinator
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - node
+      - connect
+      - "{{ hostvars[item].garage_node_endpoint }}"
+  loop: "{{ groups['s3_servers'] | difference([garage_coordinator]) }}"
+  register: garage_connect_result
+  changed_when: false
+  retries: 5
+  delay: 3
+  until: garage_connect_result.rc == 0
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Wait until the coordinator sees all Garage nodes
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - json-api
+      - GetClusterStatus
+  register: garage_cluster_status
+  changed_when: false
+  retries: 20
+  delay: 3
+  until: >-
+    garage_expected_node_ids |
+    difference(
+      (garage_cluster_status.stdout | from_json).nodes |
+      selectattr('isUp', 'equalto', true) |
+      map(attribute='id') |
+      list
+    ) | length == 0
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Read the current Garage layout
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - json-api
+      - GetClusterLayout
+  register: garage_layout_result
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Store the current Garage layout
+  ansible.builtin.set_fact:
+    garage_layout: "{{ garage_layout_result.stdout | from_json }}"
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Refuse to overwrite pending Garage layout changes
+  ansible.builtin.assert:
+    that:
+      - garage_layout.stagedRoleChanges | length == 0
+      - garage_layout.roles | length in [0, groups['s3_servers'] | length]
+    fail_msg: >-
+      Garage has pending or unexpected layout state. Review it manually with
+      'garage layout show' before running this playbook again.
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Validate nodes in an existing Garage layout
+  ansible.builtin.assert:
+    that:
+      - >-
+        hostvars[item].garage_node_id in
+        (garage_layout.roles | map(attribute='id') | list)
+      - >-
+        (garage_layout.roles |
+         selectattr('id', 'equalto', hostvars[item].garage_node_id) |
+         map(attribute='zone') | first) == hostvars[item].garage_zone
+    fail_msg: >-
+      Existing Garage role for {{ item }} differs from inventory. Change the
+      layout manually; the playbook will not apply a risky layout replacement.
+  loop: "{{ groups['s3_servers'] }}"
+  when: garage_layout.roles | length > 0
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Stage the initial Garage storage roles
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - layout
+      - assign
+      - "{{ hostvars[item].garage_node_id }}"
+      - --zone
+      - "{{ hostvars[item].garage_zone }}"
+      - --capacity
+      - "{{ garage_capacity }}"
+      - --tag
+      - "{{ item }}"
+  changed_when: true
+  loop: "{{ groups['s3_servers'] }}"
+  when: garage_layout.roles | length == 0
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Apply the initial Garage layout once
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - layout
+      - apply
+      - --version
+      - "{{ (garage_layout.version | int) + 1 }}"
+  changed_when: true
+  when: garage_layout.roles | length == 0
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Wait for a healthy three-node Garage cluster
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - json-api
+      - GetClusterHealth
+  register: garage_health_result
+  changed_when: false
+  retries: 40
+  delay: 3
+  until: >-
+    (garage_health_result.stdout | from_json).status == 'healthy' and
+    (garage_health_result.stdout | from_json).connectedNodes == groups['s3_servers'] | length and
+    (garage_health_result.stdout | from_json).storageNodesUp == groups['s3_servers'] | length
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Show Garage cluster health
+  ansible.builtin.debug:
+    var: garage_health_result.stdout
+  run_once: true

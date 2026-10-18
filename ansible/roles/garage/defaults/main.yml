@@ -1,0 +1,30 @@
+---
+garage_version: "2.4.1"
+garage_binary_url: >-
+  https://garagehq.deuxfleurs.fr/_releases/v{{ garage_version }}/x86_64-unknown-linux-musl/garage
+garage_binary_checksum: "sha256:ae49f8de4aaee6b5ca305f7cbdccc8cd8a29b2804aac074649f18bfb83d0a2b6"
+
+garage_user: garage
+garage_group: garage
+garage_config_file: /etc/garage.toml
+garage_metadata_dir: /var/lib/garage/meta
+garage_data_root: /srv/storage/garage
+garage_data_dir: "{{ garage_data_root }}/data"
+garage_snapshots_dir: "{{ garage_data_root }}/snapshots"
+
+garage_replication_factor: 3
+garage_consistency_mode: consistent
+garage_db_engine: lmdb
+garage_metadata_snapshot_interval: 6h
+garage_compression_level: 1
+garage_capacity: 14G
+garage_coordinator: cloud_s3
+
+garage_rpc_port: 3901
+garage_s3_port: 3900
+garage_web_port: 3902
+garage_admin_port: 3903
+garage_s3_region: garage
+
+garage_bucket_name: product-images
+garage_app_key_name: shop-web

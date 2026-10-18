@@ -1,0 +1,147 @@
+---
+- name: Check whether the application bucket exists
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - bucket
+      - info
+      - "{{ garage_bucket_name }}"
+  register: garage_bucket_info
+  changed_when: false
+  failed_when: garage_bucket_info.rc not in [0, 1]
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Create the application bucket
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - bucket
+      - create
+      - "{{ garage_bucket_name }}"
+  changed_when: true
+  when: garage_bucket_info.rc != 0
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Check whether the application S3 key exists
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - key
+      - info
+      - "{{ vault_garage_app_access_key }}"
+  register: garage_app_key_info
+  changed_when: false
+  failed_when: garage_app_key_info.rc not in [0, 1]
+  no_log: true
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Import the application S3 key
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - key
+      - import
+      - --yes
+      - -n
+      - "{{ garage_app_key_name }}"
+      - "{{ vault_garage_app_access_key }}"
+      - "{{ vault_garage_app_secret_key }}"
+  changed_when: true
+  when: garage_app_key_info.rc != 0
+  no_log: true
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Grant the application key read and write access
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - bucket
+      - allow
+      - --read
+      - --write
+      - "{{ garage_bucket_name }}"
+      - --key
+      - "{{ vault_garage_app_access_key }}"
+  changed_when: false
+  no_log: true
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Verify S3 authentication and object round trip
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/python3
+      - '-'
+    stdin: |
+      import os
+      import uuid
+
+      import boto3
+      from botocore import UNSIGNED
+      from botocore.config import Config
+      from botocore.exceptions import ClientError
+
+      endpoint = os.environ['S3_ENDPOINT']
+      bucket = os.environ['S3_BUCKET']
+
+      def s3_client(access=None, secret=None, unsigned=False):
+          return boto3.client(
+              's3',
+              endpoint_url=endpoint,
+              region_name=os.environ['S3_REGION'],
+              aws_access_key_id=access or 'invalid-access-key',
+              aws_secret_access_key=secret or 'invalid-secret-key',
+              config=Config(
+                  signature_version=UNSIGNED if unsigned else 's3v4',
+                  s3={'addressing_style': 'path'},
+                  connect_timeout=5,
+                  read_timeout=15,
+                  retries={'max_attempts': 2},
+              ),
+          )
+
+      def require_denied(call):
+          try:
+              call()
+          except ClientError as error:
+              status = error.response['ResponseMetadata']['HTTPStatusCode']
+              if status not in (401, 403):
+                  raise
+          else:
+              raise RuntimeError('A forbidden S3 request succeeded')
+
+      app = s3_client(os.environ['S3_ACCESS_KEY'], os.environ['S3_SECRET_KEY'])
+      anonymous = s3_client(unsigned=True)
+      key = '_ansible-check/' + uuid.uuid4().hex
+      payload = b'garage-s3-cluster-check'
+
+      require_denied(lambda: anonymous.list_objects_v2(Bucket=bucket, MaxKeys=1))
+      try:
+          app.put_object(Bucket=bucket, Key=key, Body=payload)
+          downloaded = app.get_object(Bucket=bucket, Key=key)['Body'].read()
+          if downloaded != payload:
+              raise RuntimeError('Downloaded object differs from uploaded object')
+          require_denied(lambda: anonymous.get_object(Bucket=bucket, Key=key))
+      finally:
+          app.delete_object(Bucket=bucket, Key=key)
+  environment:
+    S3_ENDPOINT: "http://127.0.0.1:{{ garage_s3_port }}"
+    S3_REGION: "{{ garage_s3_region }}"
+    S3_BUCKET: "{{ garage_bucket_name }}"
+    S3_ACCESS_KEY: "{{ vault_garage_app_access_key }}"
+    S3_SECRET_KEY: "{{ vault_garage_app_secret_key }}"
+  changed_when: false
+  no_log: true
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Report Garage S3 initialization
+  ansible.builtin.debug:
+    msg: >-
+      Garage cluster is healthy. Bucket {{ garage_bucket_name }} and application
+      key {{ garage_app_key_name }} are ready.
+  run_once: true

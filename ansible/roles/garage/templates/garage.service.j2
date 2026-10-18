@@ -1,0 +1,26 @@
+[Unit]
+Description=Garage distributed S3 object store
+Documentation=https://garagehq.deuxfleurs.fr/documentation/
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor=/srv/storage
+
+[Service]
+Type=simple
+User={{ garage_user }}
+Group={{ garage_group }}
+Environment=GARAGE_CONFIG_FILE={{ garage_config_file }}
+Environment=RUST_LOG=garage=info
+Environment=RUST_BACKTRACE=1
+ExecStart=/usr/local/bin/garage server
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=42000
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/garage {{ garage_data_root }}
+
+[Install]
+WantedBy=multi-user.target

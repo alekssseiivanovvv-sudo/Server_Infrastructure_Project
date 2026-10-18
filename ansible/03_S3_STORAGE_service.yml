@@ -1,0 +1,11 @@
+---
+- name: Install and configure the Garage S3 cluster
+  hosts: s3_servers
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  roles:
+    - garage

@@ -1,0 +1,25 @@
+metadata_dir = {{ garage_metadata_dir | to_json }}
+data_dir = {{ garage_data_dir | to_json }}
+metadata_snapshots_dir = {{ garage_snapshots_dir | to_json }}
+metadata_auto_snapshot_interval = {{ garage_metadata_snapshot_interval | to_json }}
+db_engine = {{ garage_db_engine | to_json }}
+
+replication_factor = {{ garage_replication_factor }}
+consistency_mode = {{ garage_consistency_mode | to_json }}
+compression_level = {{ garage_compression_level }}
+
+rpc_bind_addr = {{ ('0.0.0.0:' ~ garage_rpc_port) | to_json }}
+rpc_public_addr = {{ (ansible_host ~ ':' ~ garage_rpc_port) | to_json }}
+rpc_secret = {{ vault_garage_rpc_secret | to_json }}
+
+[s3_api]
+s3_region = {{ garage_s3_region | to_json }}
+api_bind_addr = {{ ('0.0.0.0:' ~ garage_s3_port) | to_json }}
+advertise_endpoint = {{ ('http://' ~ ansible_host ~ ':' ~ garage_s3_port) | to_json }}
+advertise_path_style = true
+
+[admin]
+api_bind_addr = {{ ('0.0.0.0:' ~ garage_admin_port) | to_json }}
+admin_token = {{ vault_garage_admin_token | to_json }}
+metrics_token = {{ vault_garage_metrics_token | to_json }}
+metrics_require_token = true

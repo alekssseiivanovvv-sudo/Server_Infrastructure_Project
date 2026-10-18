@@ -1,0 +1,150 @@
+---
+- name: Validate Garage inventory and secrets
+  ansible.builtin.assert:
+    that:
+      - groups['s3_servers'] | length == garage_replication_factor | int
+      - ansible_play_hosts_all | sort == groups['s3_servers'] | sort
+      - garage_coordinator in groups['s3_servers']
+      - ansible_distribution == 'Ubuntu'
+      - ansible_service_mgr == 'systemd'
+      - vault_garage_rpc_secret | default('') is match('^[0-9a-fA-F]{64}$')
+      - vault_garage_admin_token | default('') | length >= 32
+      - vault_garage_metrics_token | default('') | length >= 32
+      - vault_garage_app_access_key | default('') is match('^GK.+')
+      - vault_garage_app_secret_key | default('') | length >= 32
+    fail_msg: >-
+      Garage requires exactly three s3_servers and the Vault variables
+      vault_garage_rpc_secret, vault_garage_admin_token,
+      vault_garage_metrics_token, vault_garage_app_access_key and
+      vault_garage_app_secret_key. Run this cluster play without --limit.
+
+- name: Select Garage zone from inventory groups
+  ansible.builtin.set_fact:
+    garage_zone: >-
+      {{ 'east' if inventory_hostname in groups['east'] else
+         'west' if inventory_hostname in groups['west'] else
+         'cloud' if inventory_hostname in groups['cloud'] else '' }}
+
+- name: Validate Garage zone
+  ansible.builtin.assert:
+    that:
+      - garage_zone in ['east', 'west', 'cloud']
+    fail_msg: "{{ inventory_hostname }} must belong to east, west or cloud."
+
+- name: Verify the RAID storage mount
+  ansible.builtin.command: mountpoint -q /srv/storage
+  changed_when: false
+
+- name: Install Garage dependencies
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - python3
+      - python3-boto3
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create Garage system group
+  ansible.builtin.group:
+    name: "{{ garage_group }}"
+    system: true
+    state: present
+
+- name: Create Garage system account
+  ansible.builtin.user:
+    name: "{{ garage_user }}"
+    group: "{{ garage_group }}"
+    system: true
+    create_home: false
+    home: /nonexistent
+    shell: /usr/sbin/nologin
+    state: present
+
+- name: Create Garage directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ garage_user }}"
+    group: "{{ garage_group }}"
+    mode: '0750'
+  loop:
+    - /var/lib/garage
+    - "{{ garage_metadata_dir }}"
+    - "{{ garage_data_root }}"
+    - "{{ garage_data_dir }}"
+    - "{{ garage_snapshots_dir }}"
+
+# Added delay due to poor internet connection speed on host 2
+- name: Download the pinned Garage binary
+  ansible.builtin.get_url:
+    url: "{{ garage_binary_url }}"
+    dest: /usr/local/bin/garage
+    checksum: "{{ garage_binary_checksum }}"
+    owner: root
+    group: root
+    mode: "0755"
+    timeout: 120
+  register: garage_download
+  retries: 5
+  delay: 10
+  until: garage_download is succeeded
+  notify: Restart Garage
+
+- name: Install Garage configuration
+  ansible.builtin.template:
+    src: garage.toml.j2
+    dest: "{{ garage_config_file }}"
+    owner: root
+    group: "{{ garage_group }}"
+    mode: '0640'
+  no_log: true
+  diff: false
+  notify: Restart Garage
+
+- name: Install Garage systemd service
+  ansible.builtin.template:
+    src: garage.service.j2
+    dest: /etc/systemd/system/garage.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - Reload systemd
+    - Restart Garage
+
+- name: Apply Garage configuration before cluster bootstrap
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start Garage
+  ansible.builtin.systemd:
+    name: garage
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Wait for local Garage listeners
+  ansible.builtin.wait_for:
+    host: "{{ ansible_host }}"
+    port: "{{ item }}"
+    timeout: 120
+  loop:
+    - "{{ garage_rpc_port }}"
+    - "{{ garage_s3_port }}"
+    - "{{ garage_admin_port }}"
+
+- name: Read this Garage node ID
+  ansible.builtin.command: /usr/local/bin/garage node id
+  register: garage_node_id_result
+  changed_when: false
+
+- name: Store this Garage node identity
+  ansible.builtin.set_fact:
+    garage_node_endpoint: "{{ garage_node_id_result.stdout | trim }}"
+    garage_node_id: "{{ (garage_node_id_result.stdout | trim).split('@')[0] }}"
+
+- name: Configure the Garage cluster
+  ansible.builtin.import_tasks: cluster.yml
+
+- name: Configure the Garage bucket and application key
+  ansible.builtin.import_tasks: bucket.yml
