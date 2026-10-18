@@ -1,4 +1,4 @@
-#cloud-config
+#cloud-config alpine server
 hostname: ${jsonencode(hostname)}
 manage_etc_hosts: true
 
@@ -6,7 +6,11 @@ users:
   - name: ansible_admin
     groups: [wheel]
     shell: /bin/ash
-    lock_passwd: true
+    # Alpine sshd without PAM rejects keys for a shadow-locked account.
+    # The password hash belongs to a discarded high-entropy value, while
+    # password authentication remains disabled below.
+    lock_passwd: false
+    hashed_passwd: '$6$.HjM1eQMzJDI28TK$4Hs5uR5U12QNXZ8d22kr1QppM3MpTSESwxhRXilKUH/Ifyt3AcipQ7MEx4qycTfmTnxANxyGAUl4iKBviTy/20' #dummy password
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
     ssh_authorized_keys:
       - ${jsonencode(ssh_public_key)}

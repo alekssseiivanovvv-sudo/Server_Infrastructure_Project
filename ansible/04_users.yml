@@ -117,7 +117,7 @@
 # keep the host_1 and host_2 keys intact.
 - name: Clear stale infrastructure SSH host keys
   hosts: hypervisor_hosts:automation_nodes
-  become: true
+  become: "{{ inventory_hostname in groups['hypervisor_hosts'] }}"
   gather_facts: false
 
   vars_files:
@@ -193,7 +193,11 @@
             )
           }}
         known_host_port: >-
-          {{ hostvars[item.0].ansible_port | default(vault_ssh_port) }}
+          {{
+            vault_router_ssh_port
+            if item.0 in groups['routers']
+            else vault_ssh_port
+          }}
       loop: >-
         {{
           (groups['infrastructure'] | default([]))
@@ -222,6 +226,11 @@
       - admin_aleksei
       - admin_ilja
     console_admin_user: system_admin
+    # Alpine sshd (without PAM) rejects public-key authentication when the
+    # shadow password starts with ! or *. This is a hash of a discarded
+    # high-entropy value: the account is active for SSH keys, but nobody has
+    # a usable console password.
+    alpine_key_only_password_hash: '$6$.HjM1eQMzJDI28TK$4Hs5uR5U12QNXZ8d22kr1QppM3MpTSESwxhRXilKUH/Ifyt3AcipQ7MEx4qycTfmTnxANxyGAUl4iKBviTy/20'
 
   tasks:
     - name: Check that both host public keys are available
@@ -264,7 +273,12 @@
     - name: Create key-only human administrators
       ansible.builtin.user:
         name: "{{ item }}"
-        password: "!"
+        password: >-
+          {{
+            alpine_key_only_password_hash
+            if ansible_facts.distribution == 'Alpine'
+            else '!'
+          }}
         update_password: always
         shell: "{{ '/bin/ash' if ansible_facts.distribution == 'Alpine' else '/bin/bash' }}"
         groups: "{{ ['wheel'] if ansible_facts.distribution == 'Alpine' else ['sudo'] }}"
