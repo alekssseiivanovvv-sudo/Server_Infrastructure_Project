@@ -1,0 +1,59 @@
+---
+- name: Create infrastructure with Terraform
+  hosts: automation_nodes
+  connection: local
+  gather_facts: false
+
+  vars:
+    terraform_project_dir: "{{ playbook_dir }}/../terraform"
+    terraform_plan_file: "{{ terraform_project_dir }}/ansible.tfplan"
+
+  environment:
+    TF_IN_AUTOMATION: "true"
+    TF_INPUT: "false"
+
+  tasks:
+  
+    - name: Plan and apply Terraform changes
+      block:
+        - name: Create Terraform plan
+          ansible.builtin.command:
+            argv:
+              - terraform
+              - plan
+              - -input=false
+              - -no-color
+              - -detailed-exitcode
+              - -lock-timeout=60s
+              - "-out={{ terraform_plan_file }}"
+          args:
+            chdir: "{{ terraform_project_dir }}"
+          register: terraform_plan
+          changed_when: terraform_plan.rc == 2
+          failed_when: terraform_plan.rc not in [0, 2]
+
+        - name: Apply Terraform plan
+          ansible.builtin.command:
+            argv:
+              - terraform
+              - apply
+              - -input=false
+              - -no-color
+              - -lock-timeout=60s
+              - "{{ terraform_plan_file }}"
+          args:
+            chdir: "{{ terraform_project_dir }}"
+          when: terraform_plan.rc == 2
+          changed_when: true
+
+        - name: Report unchanged infrastructure
+          ansible.builtin.debug:
+            msg: Terraform found no infrastructure changes.
+          when: terraform_plan.rc == 0
+
+      always:
+        - name: Remove temporary Terraform plan
+          ansible.builtin.file:
+            path: "{{ terraform_plan_file }}"
+            state: absent
+          changed_when: false
