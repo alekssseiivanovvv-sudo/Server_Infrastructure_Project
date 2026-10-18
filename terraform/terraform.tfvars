@@ -3,7 +3,7 @@
 images_dir   = "/var/lib/libvirt/images"
 storage_pool = "default"
 
-#routers must be created before servers, because servers depend on routers for network connectivity.
+# Routers must be created before servers because servers depend on their LAN networks.
 vm-routers = {
   cloud_router = {
     host              = "host_1"
@@ -40,10 +40,10 @@ vm-routers = {
     vcpus             = 1
     ram               = 512
     system_drive_size = 5
-    #files added by ansible
+
     base_image = "alpine"
     cloud_init = "/var/lib/libvirt/images/vms/east_router/seed.iso"
-    #network configuration
+
     networks = {
       wan = {
         bridge = "default"
@@ -69,10 +69,10 @@ vm-routers = {
     vcpus             = 1
     ram               = 512
     system_drive_size = 5
-    #files added by ansible
+
     base_image = "alpine"
     cloud_init = "/var/lib/libvirt/images/vms/west_router/seed.iso"
-    #network configuration
+
     networks = {
       wan = {
         bridge = "default"
@@ -93,8 +93,6 @@ vm-routers = {
   }
 }
 
-#___________________________________________________________________________________________________________
-
 vm-servers = {
   east-db = {
     host              = "host_1"
@@ -102,9 +100,9 @@ vm-servers = {
     vcpus             = 2
     ram               = 3072
     system_drive_size = 20
-    #files added by ansible
+
     base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/east-db/seed.iso" # проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/vms/east-db/seed.iso"
 
     networks = {
       lan = {
@@ -117,7 +115,7 @@ vm-servers = {
     console             = true
     console_type        = "serial"
     console_target_type = "pty"
-    console_port        = 1
+    console_port        = 0
   }
 
   west-db = {
@@ -126,9 +124,9 @@ vm-servers = {
     vcpus             = 2
     ram               = 3072
     system_drive_size = 20
-    #files added by ansible
+
     base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/west-db/seed.iso" # проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/vms/west-db/seed.iso"
 
     networks = {
       lan = {
@@ -141,7 +139,7 @@ vm-servers = {
     console             = true
     console_type        = "serial"
     console_target_type = "pty"
-    console_port        = 1
+    console_port        = 0
   }
 
   cloud-quorum = {
@@ -150,9 +148,9 @@ vm-servers = {
     vcpus             = 1
     ram               = 2048
     system_drive_size = 20
-    #files added by ansible
+
     base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/cloud-quorum/seed.iso" # проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/vms/cloud-quorum/seed.iso"
 
     networks = {
       lan = {
@@ -165,7 +163,7 @@ vm-servers = {
     console             = true
     console_type        = "serial"
     console_target_type = "pty"
-    console_port        = 1
+    console_port        = 0
   }
 
   east-storage = {
@@ -174,6 +172,7 @@ vm-servers = {
     vcpus             = 1
     ram               = 3072
     system_drive_size = 20
+
     extra_drives = [
       {
         name = "east-storage-raid-1"
@@ -184,9 +183,9 @@ vm-servers = {
         size = 15
       }
     ]
-    #files added by ansible
+
     base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/east-storage/seed.iso" # проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/vms/east-storage/seed.iso"
 
     networks = {
       lan = {
@@ -199,7 +198,7 @@ vm-servers = {
     console             = true
     console_type        = "serial"
     console_target_type = "pty"
-    console_port        = 1
+    console_port        = 0
   }
 
   west-storage = {
@@ -208,19 +207,20 @@ vm-servers = {
     vcpus             = 1
     ram               = 3072
     system_drive_size = 20
+
     extra_drives = [
-      {
-        name = "west-storage-backup-1"
-        size = 15
-      },
       {
         name = "west-storage-raid-1"
         size = 15
+      },
+      {
+        name = "west-storage-raid-2"
+        size = 15
       }
     ]
-    #files added by ansible
+
     base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/west-storage/seed.iso" # проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/vms/west-storage/seed.iso"
 
     networks = {
       lan = {
@@ -233,28 +233,29 @@ vm-servers = {
     console             = true
     console_type        = "serial"
     console_target_type = "pty"
-    console_port        = 1
+    console_port        = 0
   }
 
-  s3-storage = {
+  cloud-s3 = {
     host              = "host_1"
-    name              = "s3-storage"
+    name              = "cloud-s3"
     vcpus             = 1
     ram               = 2048
     system_drive_size = 20
+
     extra_drives = [
       {
-        name = "s3-storage-raid-1"
+        name = "cloud-s3-raid-1"
         size = 15
       },
       {
-        name = "s3-storage-raid-2"
+        name = "cloud-s3-raid-2"
         size = 15
       }
     ]
-    #files added by ansible
+
     base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/s3-storage/seed.iso" # проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/vms/cloud-s3/seed.iso"
 
     networks = {
       lan = {
@@ -267,7 +268,7 @@ vm-servers = {
     console             = true
     console_type        = "serial"
     console_target_type = "pty"
-    console_port        = 1
+    console_port        = 0
   }
 
   east-web = {
@@ -276,9 +277,9 @@ vm-servers = {
     vcpus             = 2
     ram               = 3072
     system_drive_size = 20
-    #files added by ansible
+
     base_image = "alpine"
-    cloud_init = "/var/lib/libvirt/images/east-web/seed.iso" # проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/vms/east-web/seed.iso"
 
     networks = {
       lan = {
@@ -291,7 +292,7 @@ vm-servers = {
     console             = true
     console_type        = "serial"
     console_target_type = "pty"
-    console_port        = 1
+    console_port        = 0
   }
 
   west-web = {
@@ -300,9 +301,9 @@ vm-servers = {
     vcpus             = 2
     ram               = 3072
     system_drive_size = 20
-    #files added by ansible
+
     base_image = "alpine"
-    cloud_init = "/var/lib/libvirt/images/west-web/seed.iso" # проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/vms/west-web/seed.iso"
 
     networks = {
       lan = {
@@ -315,23 +316,23 @@ vm-servers = {
     console             = true
     console_type        = "serial"
     console_target_type = "pty"
-    console_port        = 1
+    console_port        = 0
   }
 
-  cloud-load-balancer = {
+  east-load-balancer = {
     host              = "host_1"
-    name              = "cloud-load-balancer"
+    name              = "east-load-balancer"
     vcpus             = 1
-    ram               = 2048
+    ram               = 1024
     system_drive_size = 20
-    #files added by ansible
+
     base_image = "alpine"
-    cloud_init = "/var/lib/libvirt/images/cloud-load-balancer/seed.iso" # проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/vms/east-load-balancer/seed.iso"
 
     networks = {
       lan = {
-        bridge = "cloud-lan"
-        mac    = "52:54:00:74:04:01"
+        bridge = "east-lan"
+        mac    = "52:54:00:72:05:01"
       }
     }
 
@@ -339,18 +340,42 @@ vm-servers = {
     console             = true
     console_type        = "serial"
     console_target_type = "pty"
-    console_port        = 1
+    console_port        = 0
+  }
+
+  west-load-balancer = {
+    host              = "host_2"
+    name              = "west-load-balancer"
+    vcpus             = 1
+    ram               = 1024
+    system_drive_size = 20
+
+    base_image = "alpine"
+    cloud_init = "/var/lib/libvirt/images/vms/west-load-balancer/seed.iso"
+
+    networks = {
+      lan = {
+        bridge = "west-lan"
+        mac    = "52:54:00:73:05:01"
+      }
+    }
+
+    autostart           = true
+    console             = true
+    console_type        = "serial"
+    console_target_type = "pty"
+    console_port        = 0
   }
 
   cloud-monitoring = {
-    host              = "host_1"
+    host              = "host_2"
     name              = "cloud-monitoring"
     vcpus             = 1
-    ram               = 2048
+    ram               = 6144
     system_drive_size = 30
-    #files added by ansible
+
     base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/cloud-monitoring/seed.iso" # проверить путь после доработки Ansible
+    cloud_init = "/var/lib/libvirt/images/vms/cloud-monitoring/seed.iso"
 
     networks = {
       lan = {
@@ -363,6 +388,6 @@ vm-servers = {
     console             = true
     console_type        = "serial"
     console_target_type = "pty"
-    console_port        = 1
+    console_port        = 0
   }
 }

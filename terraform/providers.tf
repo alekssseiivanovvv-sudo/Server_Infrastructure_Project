@@ -21,3 +21,5 @@ provider "libvirt" {
   alias = "host_2"
   uri   = "qemu+ssh://ansible_admin@100.64.0.11/system"
 }
+
+#### later remove # in networks, routers, providers, machines, wait_for

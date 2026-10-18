@@ -29,16 +29,16 @@ resource "libvirt_network" "cloud_lan" {
   }
 }
 
-#resource "libvirt_network" "west_lan" {
-#  count    = contains(var.enabled_hosts, "host_2") ? 1 : 0 #added for test only on 1 host
-#  provider = libvirt.host_2
-#
-#  name      = "west-lan"
-#  autostart = true
-#
-#  bridge = {
-#    name  = "virbr-west"
-#    stp   = "on"
-#   delay = "0"
-#  }
-#}
+resource "libvirt_network" "west_lan" {
+  count    = contains(var.enabled_hosts, "host_2") ? 1 : 0 #added for test only on 1 host
+  provider = libvirt.host_2
+
+  name      = "west-lan"
+  autostart = true
+
+  bridge = {
+    name  = "virbr-west"
+    stp   = "on"
+    delay = "0"
+  }
+}

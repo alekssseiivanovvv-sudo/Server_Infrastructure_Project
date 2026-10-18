@@ -11,11 +11,15 @@ west_router ansible_host=100.64.0.3
 cloud_router ansible_host=100.64.0.1
 
 [db_servers]
-east_db ansible_host=192.168.72.3
-west_db ansible_host=192.168.73.3
+east_db ansible_host=192.168.72.4
+west_db ansible_host=192.168.73.4
 
 [quorum_servers]
 cloud_quorum ansible_host=192.168.74.5
+
+[patroni_servers]
+east_db
+west_db
 
 [etcd_servers]
 east_db
@@ -23,25 +27,24 @@ west_db
 cloud_quorum
 
 [fs_servers]
-east_storage ansible_host=192.168.72.4
-west_storage ansible_host=192.168.73.4
+east_storage ansible_host=192.168.72.5
+west_storage ansible_host=192.168.73.5
 
 [s3_servers]
 cloud_s3 ansible_host=192.168.74.6
+east_storage
+west_storage
 
 [web_servers]
-east_web ansible_host=192.168.72.2
-west_web ansible_host=192.168.73.2
+east_web ansible_host=192.168.72.3
+west_web ansible_host=192.168.73.3
 
 [balance_servers]
-load_balancer ansible_host=192.168.74.4
+east_load_balancer ansible_host=192.168.72.2
+west_load_balancer ansible_host=192.168.73.2
 
 [monitoring_servers]
-monitoring ansible_host=192.168.74.3
-
-[patroni_servers]
-east_db
-west_db
+cloud_monitoring ansible_host=192.168.74.3
 
 [alloy_agents:children]
 web_servers
@@ -58,28 +61,29 @@ hypervisor_hosts
 web_servers
 
 [node_exporter_agents:children]
-#routers
-#quorum_servers
+# routers
+# quorum_servers
 
 [routers:vars]
-ansible_port={{ vault_router_ssh_port }}
+ansible_port="{{ vault_router_ssh_port }}"
 
 [east]
 east_router
+east_load_balancer
 east_web
 east_db
 east_storage
 
 [west]
 west_router
+west_load_balancer
 west_web
 west_db
 west_storage
 
 [cloud]
 cloud_router
-load_balancer
-monitoring
+cloud_monitoring
 cloud_quorum
 cloud_s3
 
@@ -98,7 +102,7 @@ monitoring_servers
 quorum_servers
 
 [linux_servers:vars]
-ansible_port={{ vault_ssh_port }}
+ansible_port="{{ vault_ssh_port }}"
 
 [backup_source_servers:children]
 s3_servers
