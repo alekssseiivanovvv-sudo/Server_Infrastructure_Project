@@ -1,4 +1,6 @@
 locals {
+  ansible_admin_public_key = trimspace(file(pathexpand(var.ansible_admin_public_key_file)))
+
   base_images = {
     ubuntu = var.ubuntu_image
     alpine = var.alpine_image

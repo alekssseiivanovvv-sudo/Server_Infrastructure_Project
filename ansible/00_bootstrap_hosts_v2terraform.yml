@@ -67,35 +67,66 @@
         name: apparmor
         state: reloaded
 
+    - name: Allow QEMU service account to access libvirt storage
+      ansible.builtin.user:
+        name: libvirt-qemu
+        groups:
+          - kvm
+        append: true
+
+- name: Configure libvirt storage permissions and AppArmor
+  hosts: hypervisor_hosts
+  become: true
+  gather_facts: false
+  serial: 1
+
+  vars:
+    libvirt_templates_directory: /var/lib/libvirt/images/templates
+    libvirt_qemu_user: libvirt-qemu
+    libvirt_qemu_group: libvirt-qemu
+
+  handlers:
+    - name: Reload AppArmor
+      ansible.builtin.systemd_service:
+        name: apparmor
+        state: reloaded
+
   tasks:
-    - name: Create templates directory
+    - name: Check templates directory
+      ansible.builtin.stat:
+        path: "{{ libvirt_templates_directory }}"
+      register: templates_directory
+
+    - name: Verify templates directory exists
+      ansible.builtin.assert:
+        that:
+          - templates_directory.stat.exists
+          - templates_directory.stat.isdir
+        fail_msg: >-
+          {{ libvirt_templates_directory }} does not exist.
+          Install the base images before running this playbook.
+
+    - name: Configure templates directory permissions
       ansible.builtin.file:
-        path: /var/lib/libvirt/images/templates
+        path: "{{ libvirt_templates_directory }}"
         state: directory
         owner: root
-        group: kvm
+        group: "{{ libvirt_qemu_group }}"
         mode: "0750"
 
-    - name: Create parent directory for Terraform VM pools
-      ansible.builtin.file:
-        path: /var/lib/libvirt/images/vms
-        state: directory
-        owner: root
-        group: kvm
-        mode: "0750"
-
-    - name: Find template directories
+    - name: Find template subdirectories
       ansible.builtin.find:
-        paths: /var/lib/libvirt/images/templates
+        paths: "{{ libvirt_templates_directory }}"
         file_type: directory
         recurse: true
       register: template_directories
 
-    - name: Configure template directory permissions
+    - name: Configure template subdirectory permissions
       ansible.builtin.file:
         path: "{{ item.path }}"
+        state: directory
         owner: root
-        group: kvm
+        group: "{{ libvirt_qemu_group }}"
         mode: "0750"
       loop: "{{ template_directories.files }}"
       loop_control:
@@ -103,16 +134,25 @@
 
     - name: Find template image files
       ansible.builtin.find:
-        paths: /var/lib/libvirt/images/templates
+        paths: "{{ libvirt_templates_directory }}"
         file_type: file
         recurse: true
       register: template_images
 
+    - name: Verify template images exist
+      ansible.builtin.assert:
+        that:
+          - template_images.matched | int > 0
+        fail_msg: >-
+          No template images were found in
+          {{ libvirt_templates_directory }}.
+
     - name: Configure template image permissions
       ansible.builtin.file:
         path: "{{ item.path }}"
+        state: file
         owner: root
-        group: kvm
+        group: "{{ libvirt_qemu_group }}"
         mode: "0640"
       loop: "{{ template_images.files }}"
       loop_control:
@@ -139,99 +179,24 @@
           /var/lib/libvirt/images/templates/ r,
           /var/lib/libvirt/images/templates/** rk,
 
-          # VM disks — read, write and locking
+          # Terraform-managed VM disks
           /var/lib/libvirt/images/vms/ r,
           /var/lib/libvirt/images/vms/** rwk,
       notify: Reload AppArmor
 
-    - name: Apply AppArmor changes before verifying libvirt
+    - name: Apply AppArmor changes
       ansible.builtin.meta: flush_handlers
 
-    - name: Check templates libvirt storage pool
+    - name: Verify QEMU service account can read template images
       ansible.builtin.command:
         argv:
-          - virsh
-          - -c
-          - qemu:///system
-          - pool-info
-          - templates
-      register: templates_pool_check
-      changed_when: false
-      failed_when: false
-
-    - name: Define templates libvirt storage pool
-      ansible.builtin.command:
-        argv:
-          - virsh
-          - -c
-          - qemu:///system
-          - pool-define-as
-          - templates
-          - dir
-          - "-"
-          - "-"
-          - "-"
-          - "-"
-          - /var/lib/libvirt/images/templates
-      when: templates_pool_check.rc != 0
-      changed_when: true
-
-    - name: Start templates libvirt storage pool
-      ansible.builtin.command:
-        argv:
-          - virsh
-          - -c
-          - qemu:///system
-          - pool-start
-          - templates
-      register: templates_pool_start
-      when: >-
-        templates_pool_check.rc != 0
-        or 'running' not in templates_pool_check.stdout
-      changed_when: true
-
-    - name: Enable templates pool autostart
-      ansible.builtin.command:
-        argv:
-          - virsh
-          - -c
-          - qemu:///system
-          - pool-autostart
-          - templates
-      changed_when: false
-
-    - name: Refresh templates storage pool
-      ansible.builtin.command:
-        argv:
-          - virsh
-          - -c
-          - qemu:///system
-          - pool-refresh
-          - templates
-      changed_when: false
-
-    - name: Verify templates storage pool
-      ansible.builtin.command:
-        argv:
-          - virsh
-          - -c
-          - qemu:///system
-          - pool-info
-          - templates
-      register: templates_pool_verify
-      changed_when: false
-      failed_when: >-
-        templates_pool_verify.rc != 0
-        or 'running' not in templates_pool_verify.stdout
-
-    - name: Verify QEMU can read template images
-      ansible.builtin.command:
-        argv:
+          - runuser
+          - -u
+          - "{{ libvirt_qemu_user }}"
+          - --
           - test
           - -r
           - "{{ item.path }}"
-      become: true
-      become_user: libvirt-qemu
       loop: "{{ template_images.files }}"
       loop_control:
         label: "{{ item.path }}"

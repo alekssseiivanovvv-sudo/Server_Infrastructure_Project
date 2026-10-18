@@ -1,0 +1,15 @@
+version: 1
+config:
+  - type: physical
+    name: eth0
+    mac_address: ${jsonencode(wan_mac_address)}
+    subnets:
+      - type: dhcp4
+
+  - type: physical
+    name: eth1
+    mac_address: ${jsonencode(lan_mac_address)}
+    subnets:
+      - type: static
+        address: ${jsonencode(lan_address)}
+        netmask: ${jsonencode(lan_netmask)}

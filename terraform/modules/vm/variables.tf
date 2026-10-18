@@ -29,11 +29,28 @@ variable "storage_pool_prefix" {
 
 variable "extra_drives" {
   type = list(object({
-    name = string
-    size = number
+    name   = string
+    size   = number
+    serial = string
   }))
 
   default = []
+}
+
+variable "cloud_init_user_data" {
+  description = "Rendered cloud-init user-data."
+  type        = string
+  sensitive   = true
+}
+
+variable "cloud_init_meta_data" {
+  description = "Rendered cloud-init meta-data."
+  type        = string
+}
+
+variable "cloud_init_network_config" {
+  description = "Rendered cloud-init network-config."
+  type        = string
 }
 
 variable "interfaces" {

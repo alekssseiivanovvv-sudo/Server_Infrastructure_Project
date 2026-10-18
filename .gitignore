@@ -3,3 +3,4 @@
 *.tfplan
 *.tfstate
 *.tfstate.*
+**/secrets.auto.tfvars

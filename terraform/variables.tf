@@ -24,18 +24,6 @@ variable "alpine_image" {
   default     = "/var/lib/libvirt/images/templates/alpine-3.24.2-x86_64-cloudinit-r0.qcow2"
 }
 
-variable "ubuntu_default_cloud_init" {
-  description = "Fallback Ubuntu cloud-init seed ISO."
-  type        = string
-  default     = "/var/lib/libvirt/ubuntu-default-seed.iso"
-}
-
-variable "alpine_default_cloud_init" {
-  description = "Fallback Alpine cloud-init seed ISO."
-  type        = string
-  default     = "/var/lib/libvirt/alpine-default-seed.iso"
-}
-
 variable "storage_pool" {
   description = "Libvirt storage pool for VM disks."
   type        = string
@@ -51,7 +39,10 @@ variable "vm-routers" {
     ram               = number # The amount of memory (in MB) to allocate to the router
     system_drive_size = number # The size of the drive (in GB) to allocate to the router
     base_image        = string # The image to use for the router
-    cloud_init        = string # The cloud-init configuration to use for the router
+    lan_address       = string # Static LAN address without a prefix
+    lan_subnet        = string # Advertised LAN subnet, for example 192.168.72.0/27
+    lan_netmask       = optional(string, "255.255.255.224")
+    swap_size_mb      = optional(number, 512)
     networks = object({
       wan = object({ bridge = string, mac = string })
       lan = object({ bridge = string, mac = string })
@@ -75,11 +66,16 @@ variable "vm-servers" {
     ram               = number # The amount of memory (in MB) to allocate to the VM
     system_drive_size = number # The size of the drive (in GB) to allocate to the VM
     extra_drives = optional(list(object({
-      name = string # The name of the extra drive
-      size = number # The size of each extra drive (in GB)
+      name   = string # The name of the extra drive
+      size   = number # The size of each extra drive (in GB)
+      serial = string # Stable guest-visible serial, for example data1
     })), [])
-    base_image = string # The image to use for the VM
-    cloud_init = string # The cloud-init configuration to use for the VM
+    base_image             = string # The image to use for the VM
+    ip_address             = string # Static LAN address without a prefix
+    gateway                = string # Site router LAN address
+    netmask                = optional(string, "255.255.255.224")
+    swap_size_mb           = optional(number, 2048)
+    configure_storage_raid = optional(bool, false)
     networks = object({
       wan = optional(object({ bridge = string, mac = string })) # In this project by wan it means default KVM switch which allows machine directly to the internet without using virtual router
       lan = object({ bridge = string, mac = string })
@@ -90,6 +86,37 @@ variable "vm-servers" {
     console_target_type = optional(string, "pty")    # The target type for the console (default: pty)
     console_port        = optional(number, 0)        # The port to use for console access (default: 0, which means no console access)
   }))
+}
+
+variable "ansible_admin_public_key_file" {
+  description = "Public SSH key installed for ansible_admin by cloud-init."
+  type        = string
+  default     = "~/.ssh/ansible.pub"
+}
+
+variable "ssh_port" {
+  description = "SSH port configured by cloud-init on all guest VMs."
+  type        = number
+  default     = 2222
+
+  validation {
+    condition     = var.ssh_port >= 1 && var.ssh_port <= 65535
+    error_message = "ssh_port must be between 1 and 65535."
+  }
+}
+
+variable "router_tailscale_auth_keys" {
+  description = "Per-router Tailscale auth keys. Supply through secrets.auto.tfvars or TF_VAR_router_tailscale_auth_keys."
+  type        = map(string)
+  sensitive   = true
+
+  validation {
+    condition = alltrue([
+      for router_name in ["cloud_router", "east_router", "west_router"] :
+      try(trimspace(var.router_tailscale_auth_keys[router_name]) != "", false)
+    ])
+    error_message = "Provide non-empty auth keys for cloud_router, east_router and west_router."
+  }
 }
 
 variable "enabled_hosts" {

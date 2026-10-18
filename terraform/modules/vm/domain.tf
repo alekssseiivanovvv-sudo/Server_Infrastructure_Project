@@ -28,6 +28,22 @@ locals {
     }
   }
 
+  cloudinit_disk = {
+    device = "cdrom"
+
+    source = {
+      volume = {
+        pool   = libvirt_volume.cloudinit.pool
+        volume = libvirt_volume.cloudinit.name
+      }
+    }
+
+    target = {
+      dev = "sda"
+      bus = "sata"
+    }
+  }
+
   extra_disks = [
     for index, disk in var.extra_drives : {
       source = {
@@ -45,6 +61,8 @@ locals {
       driver = {
         type = "qcow2"
       }
+
+      serial = disk.serial
     }
   ]
 
@@ -79,35 +97,35 @@ resource "libvirt_domain" "vm" {
   autostart = var.autostart
   running   = true
 
-os = {
-  type         = "hvm"
-  type_arch    = "x86_64"
-  type_machine = "pc"
+  os = {
+    type         = "hvm"
+    type_arch    = "x86_64"
+    type_machine = "pc"
 
-  boot_devices = [
-    {
-      dev = "hd"
-    }
-  ]
-}
+    boot_devices = [
+      {
+        dev = "hd"
+      }
+    ]
+  }
 
   devices = {
-  disks = concat(
-    [local.system_disk],
-    local.extra_disks
-  )
+    disks = concat(
+      [local.system_disk, local.cloudinit_disk],
+      local.extra_disks
+    )
 
-  interfaces = local.network_interfaces
+    interfaces = local.network_interfaces
 
-  consoles = var.console ? [
-    {
-      type = var.console_target_type
+    consoles = var.console ? [
+      {
+        type = var.console_target_type
 
-      target = {
-        type = var.console_type
-        port = var.console_port
+        target = {
+          type = var.console_type
+          port = var.console_port
+        }
       }
-    }
-  ] : []
-}
+    ] : []
+  }
 }

@@ -12,8 +12,9 @@ vm-routers = {
     ram               = 512
     system_drive_size = 5
 
-    base_image = "alpine"
-    cloud_init = "/var/lib/libvirt/images/vms/cloud_router/seed.iso"
+    base_image  = "alpine"
+    lan_address = "192.168.74.1"
+    lan_subnet  = "192.168.74.0/27"
 
     networks = {
       wan = {
@@ -41,8 +42,9 @@ vm-routers = {
     ram               = 512
     system_drive_size = 5
 
-    base_image = "alpine"
-    cloud_init = "/var/lib/libvirt/images/vms/east_router/seed.iso"
+    base_image  = "alpine"
+    lan_address = "192.168.72.1"
+    lan_subnet  = "192.168.72.0/27"
 
     networks = {
       wan = {
@@ -70,8 +72,9 @@ vm-routers = {
     ram               = 512
     system_drive_size = 5
 
-    base_image = "alpine"
-    cloud_init = "/var/lib/libvirt/images/vms/west_router/seed.iso"
+    base_image  = "alpine"
+    lan_address = "192.168.73.1"
+    lan_subnet  = "192.168.73.0/27"
 
     networks = {
       wan = {
@@ -102,7 +105,8 @@ vm-servers = {
     system_drive_size = 20
 
     base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/vms/east-db/seed.iso"
+    ip_address = "192.168.72.4"
+    gateway    = "192.168.72.1"
 
     networks = {
       lan = {
@@ -126,7 +130,8 @@ vm-servers = {
     system_drive_size = 20
 
     base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/vms/west-db/seed.iso"
+    ip_address = "192.168.73.4"
+    gateway    = "192.168.73.1"
 
     networks = {
       lan = {
@@ -150,7 +155,8 @@ vm-servers = {
     system_drive_size = 20
 
     base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/vms/cloud-quorum/seed.iso"
+    ip_address = "192.168.74.5"
+    gateway    = "192.168.74.1"
 
     networks = {
       lan = {
@@ -175,17 +181,21 @@ vm-servers = {
 
     extra_drives = [
       {
-        name = "east-storage-raid-1"
-        size = 15
+        name   = "east-storage-raid-1"
+        size   = 15
+        serial = "data1"
       },
       {
-        name = "east-storage-raid-2"
-        size = 15
+        name   = "east-storage-raid-2"
+        size   = 15
+        serial = "data2"
       }
     ]
 
-    base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/vms/east-storage/seed.iso"
+    base_image             = "ubuntu"
+    ip_address             = "192.168.72.5"
+    gateway                = "192.168.72.1"
+    configure_storage_raid = true
 
     networks = {
       lan = {
@@ -210,17 +220,21 @@ vm-servers = {
 
     extra_drives = [
       {
-        name = "west-storage-raid-1"
-        size = 15
+        name   = "west-storage-raid-1"
+        size   = 15
+        serial = "data1"
       },
       {
-        name = "west-storage-raid-2"
-        size = 15
+        name   = "west-storage-raid-2"
+        size   = 15
+        serial = "data2"
       }
     ]
 
-    base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/vms/west-storage/seed.iso"
+    base_image             = "ubuntu"
+    ip_address             = "192.168.73.5"
+    gateway                = "192.168.73.1"
+    configure_storage_raid = true
 
     networks = {
       lan = {
@@ -245,17 +259,21 @@ vm-servers = {
 
     extra_drives = [
       {
-        name = "cloud-s3-raid-1"
-        size = 15
+        name   = "cloud-s3-raid-1"
+        size   = 15
+        serial = "data1"
       },
       {
-        name = "cloud-s3-raid-2"
-        size = 15
+        name   = "cloud-s3-raid-2"
+        size   = 15
+        serial = "data2"
       }
     ]
 
-    base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/vms/cloud-s3/seed.iso"
+    base_image             = "ubuntu"
+    ip_address             = "192.168.74.6"
+    gateway                = "192.168.74.1"
+    configure_storage_raid = true
 
     networks = {
       lan = {
@@ -279,7 +297,8 @@ vm-servers = {
     system_drive_size = 20
 
     base_image = "alpine"
-    cloud_init = "/var/lib/libvirt/images/vms/east-web/seed.iso"
+    ip_address = "192.168.72.3"
+    gateway    = "192.168.72.1"
 
     networks = {
       lan = {
@@ -303,7 +322,8 @@ vm-servers = {
     system_drive_size = 20
 
     base_image = "alpine"
-    cloud_init = "/var/lib/libvirt/images/vms/west-web/seed.iso"
+    ip_address = "192.168.73.3"
+    gateway    = "192.168.73.1"
 
     networks = {
       lan = {
@@ -327,7 +347,8 @@ vm-servers = {
     system_drive_size = 20
 
     base_image = "alpine"
-    cloud_init = "/var/lib/libvirt/images/vms/east-load-balancer/seed.iso"
+    ip_address = "192.168.72.2"
+    gateway    = "192.168.72.1"
 
     networks = {
       lan = {
@@ -351,7 +372,8 @@ vm-servers = {
     system_drive_size = 20
 
     base_image = "alpine"
-    cloud_init = "/var/lib/libvirt/images/vms/west-load-balancer/seed.iso"
+    ip_address = "192.168.73.2"
+    gateway    = "192.168.73.1"
 
     networks = {
       lan = {
@@ -368,14 +390,15 @@ vm-servers = {
   }
 
   cloud-monitoring = {
-    host              = "host_2"
+    host              = "host_1"
     name              = "cloud-monitoring"
     vcpus             = 1
     ram               = 6144
     system_drive_size = 30
 
     base_image = "ubuntu"
-    cloud_init = "/var/lib/libvirt/images/vms/cloud-monitoring/seed.iso"
+    ip_address = "192.168.74.3"
+    gateway    = "192.168.74.1"
 
     networks = {
       lan = {
