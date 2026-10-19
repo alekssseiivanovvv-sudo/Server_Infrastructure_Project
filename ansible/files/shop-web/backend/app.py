@@ -16,10 +16,11 @@ DB_USER = os.getenv('DB_USER', 'appuser')
 DB_PASS = os.getenv('DB_PASS', 'strongpassword')
 DB_PORT = int(os.getenv('DB_PORT', '5432'))
 
-SEAWEED_ENDPOINT = os.getenv('SEAWEED_ENDPOINT')
-SEAWEED_ACCESS_KEY = os.getenv('SEAWEED_ACCESS_KEY', 'any')
-SEAWEED_SECRET_KEY = os.getenv('SEAWEED_SECRET_KEY', 'any')
-SEAWEED_BUCKET = os.getenv('SEAWEED_BUCKET', 'product-images')
+GARAGE_ENDPOINT = os.getenv('GARAGE_ENDPOINT')
+GARAGE_ACCESS_KEY = os.getenv('GARAGE_ACCESS_KEY')
+GARAGE_SECRET_KEY = os.getenv('GARAGE_SECRET_KEY')
+GARAGE_BUCKET = os.getenv('GARAGE_BUCKET', 'product-images')
+GARAGE_REGION = os.getenv('GARAGE_REGION', 'garage')
 
 def get_db():
     return psycopg2.connect(
@@ -30,11 +31,17 @@ def get_db():
 def get_s3_client():
     return boto3.client(
         's3',
-        endpoint_url=SEAWEED_ENDPOINT,
-        aws_access_key_id=SEAWEED_ACCESS_KEY,
-        aws_secret_access_key=SEAWEED_SECRET_KEY,
-        config=Config(signature_version='s3v4'),
-        region_name='us-east-1'
+        endpoint_url=GARAGE_ENDPOINT,
+        aws_access_key_id=GARAGE_ACCESS_KEY,
+        aws_secret_access_key=GARAGE_SECRET_KEY,
+        config=Config(
+            signature_version='s3v4',
+            s3={'addressing_style': 'path'},
+            connect_timeout=5,
+            read_timeout=15,
+            retries={'max_attempts': 2},
+        ),
+        region_name=GARAGE_REGION
     )
 
 # Инициализация БД (ленивая, т.к. gunicorn не выполняет __main__)
@@ -97,7 +104,7 @@ def add_product():
         image_key = f"{uuid.uuid4().hex}{ext}"
         try:
             s3 = get_s3_client()
-            s3.upload_fileobj(io.BytesIO(file.read()), SEAWEED_BUCKET, image_key, ExtraArgs={'ContentType': file.mimetype})
+            s3.upload_fileobj(io.BytesIO(file.read()), GARAGE_BUCKET, image_key, ExtraArgs={'ContentType': file.mimetype})
         except Exception as e:
             return jsonify({"error": f"Image upload failed: {e}"}), 500
 
@@ -138,14 +145,36 @@ def buy_product():
 def get_image(key):
     try:
         s3 = get_s3_client()
-        response = s3.get_object(Bucket=SEAWEED_BUCKET, Key=key)
+        response = s3.get_object(Bucket=GARAGE_BUCKET, Key=key)
         return response['Body'].read(), 200, {'Content-Type': response.get('ContentType', 'application/octet-stream')}
     except Exception:
         return jsonify({"error": "Image not found"}), 404
 
+@app.route('/health/live')
+def liveness():
+    return jsonify({'status': 'ok'}), 200
+
+
 @app.route('/health')
-def health():
-    return jsonify({"status": "ok"}), 200
+def readiness():
+    checks = {'database': 'ok', 'garage': 'ok'}
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute('SELECT 1;')
+        cur.close()
+        conn.close()
+    except Exception:
+        checks['database'] = 'failed'
+
+    try:
+        get_s3_client().head_bucket(Bucket=GARAGE_BUCKET)
+    except Exception:
+        checks['garage'] = 'failed'
+
+    status = 'ok' if all(value == 'ok' for value in checks.values()) else 'failed'
+    return jsonify({'status': status, 'checks': checks}), 200 if status == 'ok' else 503
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

@@ -32,11 +32,19 @@
       changed_when: false
       when: ansible_facts.os_family == "Debian"
 
-    - name: Add project domain names to hosts file
+    - name: Remove the old single load balancer hosts entry
       ansible.builtin.lineinfile:
         path: /etc/hosts
-        regexp: '.*shop\.project\.local.*'
-        line: "192.168.74.4 shop.project.local load-balancer.project.local"
+        regexp: '^192\.168\.74\.4\s+.*shop\.project\.local.*$'
+        state: absent
+
+    - name: Add both site load balancers to hosts file
+      ansible.builtin.blockinfile:
+        path: /etc/hosts
+        marker: '# {mark} PROJECT LOAD BALANCERS'
+        block: |
+          192.168.72.2 shop.project.local east-load-balancer.project.local
+          192.168.73.2 shop.project.local west-load-balancer.project.local
         state: present
 
     - name: Find Firefox profiles

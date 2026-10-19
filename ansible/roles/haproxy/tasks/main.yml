@@ -1,0 +1,101 @@
+---
+- name: Validate HAProxy host and required inventory groups
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.distribution == 'Alpine'
+      - inventory_hostname in ['east_load_balancer', 'west_load_balancer']
+      - groups['balance_servers'] | length == 2
+      - groups['web_servers'] | length == 2
+      - groups['patroni_servers'] | length == 2
+      - groups['s3_servers'] | length == 3
+    fail_msg: >-
+      HAProxy requires east_load_balancer and west_load_balancer, two web
+      workers, two Patroni nodes and three Garage nodes.
+
+- name: Install HAProxy packages
+  ansible.builtin.apk:
+    name:
+      - haproxy
+      - curl
+    state: present
+    update_cache: true
+
+- name: Create the HAProxy certificate directory
+  ansible.builtin.file:
+    path: "{{ haproxy_certificate_file | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Validate the HAProxy TLS mode
+  ansible.builtin.assert:
+    that:
+      - haproxy_tls_mode in ['auto', 'enabled', 'disabled']
+    fail_msg: "haproxy_tls_mode must be auto, enabled or disabled."
+
+- name: Check for the HAProxy TLS certificate
+  ansible.builtin.stat:
+    path: "{{ haproxy_certificate_file }}"
+  register: haproxy_certificate
+
+- name: Require the HAProxy TLS certificate
+  ansible.builtin.assert:
+    that:
+      - haproxy_certificate.stat.exists
+    fail_msg: >-
+      TLS is enabled but {{ haproxy_certificate_file }} is missing. Run
+      06_TLS_certificates.yml before enabling TLS.
+  when: haproxy_tls_mode == 'enabled'
+
+- name: Select the effective HAProxy TLS state
+  ansible.builtin.set_fact:
+    haproxy_tls_enabled: >-
+      {{ haproxy_tls_mode == 'enabled' or
+         (haproxy_tls_mode == 'auto' and haproxy_certificate.stat.exists) }}
+
+- name: Install the HAProxy configuration
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: '0640'
+    validate: haproxy -c -f %s
+  no_log: true
+  notify: Restart HAProxy
+
+- name: Apply the HAProxy configuration
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start HAProxy
+  ansible.builtin.service:
+    name: haproxy
+    enabled: true
+    state: started
+
+- name: Wait for HAProxy listeners
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ item }}"
+    timeout: 60
+  loop:
+    - 80
+    - "{{ haproxy_postgres_port }}"
+    - "{{ haproxy_garage_port }}"
+    - "{{ haproxy_stats_port }}"
+
+- name: Check the HAProxy web frontend
+  ansible.builtin.uri:
+    url: http://127.0.0.1/health
+    status_code: "{{ 301 if haproxy_tls_enabled | bool else 200 }}"
+    follow_redirects: none
+
+- name: Check the HAProxy stats page
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ haproxy_stats_port }}/stats"
+    user: "{{ vault_haproxy_stats_user }}"
+    password: "{{ vault_haproxy_stats_password }}"
+    force_basic_auth: true
+    status_code: 200
+  no_log: true

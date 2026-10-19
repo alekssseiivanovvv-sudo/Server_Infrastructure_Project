@@ -42,7 +42,7 @@
           [Unit]
           Description=Project data service access rules
           After=nftables.service
-          Before=etcd.service patroni.service seaweed-s3.service
+          Before=etcd.service patroni.service garage.service
           [Service]
           Type=oneshot
           ExecStart=/usr/local/sbin/project-data-firewall

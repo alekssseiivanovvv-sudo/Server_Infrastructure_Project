@@ -78,7 +78,36 @@
           [alt_names]
           DNS.1=shop.project.local
           DNS.2=load-balancer.project.local
-          IP.1=192.168.74.4
+          DNS.3=east-load-balancer.project.local
+          DNS.4=west-load-balancer.project.local
+          IP.1=192.168.72.2
+          IP.2=192.168.73.2
+
+    - name: Inspect the existing HAProxy certificate
+      ansible.builtin.command:
+        argv:
+          - openssl
+          - x509
+          - -in
+          - "{{ haproxy_crt }}"
+          - -noout
+          - -ext
+          - subjectAltName
+      register: haproxy_certificate_sans
+      changed_when: false
+      failed_when: false
+
+    - name: Remove an outdated HAProxy certificate
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ haproxy_crt }}"
+        - "{{ haproxy_pem }}"
+      when: >-
+        haproxy_certificate_sans.rc != 0 or
+        'IP Address:192.168.72.2' not in haproxy_certificate_sans.stdout or
+        'IP Address:192.168.73.2' not in haproxy_certificate_sans.stdout
 
     - name: Sign HAProxy certificate
       ansible.builtin.command:
@@ -114,7 +143,7 @@
 - name: Install TLS certificate on HAProxy
   hosts: balance_servers
   become: true
-  gather_facts: false
+  gather_facts: true
 
   vars_files:
     - group_vars/group/all/vault.yml
@@ -122,15 +151,7 @@
   vars:
     cert_dir: "/home/ansible_admin/project-certs"
 
-  tasks:
-    - name: Install HAProxy
-      ansible.builtin.apk:
-        name:
-          - haproxy
-          - curl
-        state: present
-        update_cache: true
-
+  pre_tasks:
     - name: Create HAProxy certificate directory
       ansible.builtin.file:
         path: /etc/haproxy/certs
@@ -146,75 +167,8 @@
         owner: root
         group: root
         mode: "0600"
+      notify: Restart HAProxy
 
-    - name: Configure HAProxy with HTTPS
-      ansible.builtin.copy:
-        dest: /etc/haproxy/haproxy.cfg
-        owner: root
-        group: root
-        mode: "0644"
-        validate: "haproxy -c -f %s"
-        content: |
-          global
-              log /dev/log local0
-              log /dev/log local1 notice
-              maxconn 4096
-              user haproxy
-              group haproxy
-              daemon
-
-          defaults
-              log global
-              option dontlognull
-              timeout connect 5s
-              timeout client 30s
-              timeout server 30s
-
-          frontend http_front
-              bind *:80
-              mode http
-              redirect scheme https code 301
-
-          frontend https_front
-              bind *:443 ssl crt /etc/haproxy/certs/haproxy.pem
-              mode http
-              option httplog
-              option forwardfor
-              default_backend nginx_servers
-
-          backend nginx_servers
-              mode http
-              balance roundrobin
-              option httpchk GET /health
-              http-check expect status 200
-              server nginx_east 192.168.72.2:80 check inter 3s fall 3 rise 2
-              server nginx_west 192.168.73.2:80 check inter 3s fall 3 rise 2
-
-          listen stats
-              bind *:8404
-              mode http
-              stats enable
-              stats uri /stats
-              stats refresh 5s
-              stats auth {{ vault_haproxy_stats_user }}:{{ vault_haproxy_stats_password }}
-
-          frontend postgres_front
-              bind *:5000
-              mode tcp
-              option tcplog
-              default_backend postgres_primary
-
-          backend postgres_primary
-              mode tcp
-              option httpchk GET /primary
-              http-check expect status 200
-              default-server inter 2s fall 3 rise 2 on-marked-down shutdown-sessions
-              server pg_east 192.168.72.3:5432 check port 8008
-              server pg_west 192.168.73.3:5432 check port 8008
-      no_log: true
-
-    - name: Enable and restart HAProxy
-      ansible.builtin.service:
-        name: haproxy
-        enabled: true
-        state: restarted
+  roles:
+    - role: haproxy
+      haproxy_tls_mode: enabled

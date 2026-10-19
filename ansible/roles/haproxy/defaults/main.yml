@@ -1,0 +1,7 @@
+---
+haproxy_tls_mode: auto
+haproxy_certificate_file: /etc/haproxy/certs/haproxy.pem
+haproxy_stats_port: 8404
+haproxy_postgres_port: 5000
+haproxy_garage_port: 3900
+haproxy_garage_admin_port: 3903

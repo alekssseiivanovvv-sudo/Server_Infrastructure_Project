@@ -1,0 +1,92 @@
+---
+- name: Validate shop web host and required inventory groups
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.distribution == 'Alpine'
+      - inventory_hostname in groups['east'] or inventory_hostname in groups['west']
+      - groups['web_servers'] | length == 2
+      - groups['balance_servers'] | length == 2
+      - groups['s3_servers'] | length == 3
+    fail_msg: >-
+      Shop web requires two Alpine web nodes, two HAProxy nodes and three
+      Garage nodes. Each web node must belong to east or west.
+
+- name: Select the local site HAProxy
+  ansible.builtin.set_fact:
+    shop_proxy_host: >-
+      {{ hostvars['east_load_balancer'].ansible_host
+         if inventory_hostname in groups['east']
+         else hostvars['west_load_balancer'].ansible_host }}
+
+- name: Install Docker packages
+  ansible.builtin.apk:
+    name:
+      - docker
+      - docker-cli-compose
+      - curl
+    state: present
+    update_cache: true
+
+- name: Enable and start Docker
+  ansible.builtin.service:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Create the shop web directory
+  ansible.builtin.file:
+    path: "{{ shop_web_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Copy the shop web project
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/files/shop-web/"
+    dest: "{{ shop_web_dir }}/"
+    owner: root
+    group: root
+    mode: preserve
+
+- name: Configure the shop web environment
+  ansible.builtin.template:
+    src: shop.env.j2
+    dest: "{{ shop_web_dir }}/.env"
+    owner: root
+    group: root
+    mode: '0600'
+  no_log: true
+
+- name: Validate Docker Compose configuration
+  ansible.builtin.command: docker compose config --quiet
+  args:
+    chdir: "{{ shop_web_dir }}"
+  changed_when: false
+  no_log: true
+
+- name: Build and start shop web containers
+  ansible.builtin.command: docker compose up -d --build --remove-orphans
+  args:
+    chdir: "{{ shop_web_dir }}"
+  register: shop_compose_up
+  changed_when: >-
+    'Started' in shop_compose_up.stdout or
+    'Created' in shop_compose_up.stdout or
+    'Recreated' in shop_compose_up.stdout or
+    'Built' in shop_compose_up.stdout
+
+- name: Wait for the local NGINX listener
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: 80
+    timeout: 120
+
+- name: Check the local shop health endpoint
+  ansible.builtin.uri:
+    url: http://127.0.0.1/health/live
+    status_code: 200
+  register: shop_health
+  retries: 12
+  delay: 5
+  until: shop_health.status == 200

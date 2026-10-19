@@ -1,0 +1,91 @@
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    maxconn 4096
+    user haproxy
+    group haproxy
+    daemon
+
+defaults
+    log global
+    option dontlognull
+    timeout connect 5s
+    timeout client 60s
+    timeout server 60s
+
+frontend shop_http
+    bind *:80
+    mode http
+{% if haproxy_tls_enabled | bool %}
+    redirect scheme https code 301
+{% else %}
+    option httplog
+    option forwardfor
+    default_backend shop_web
+{% endif %}
+
+{% if haproxy_tls_enabled | bool %}
+frontend shop_https
+    bind *:443 ssl crt {{ haproxy_certificate_file }}
+    mode http
+    option httplog
+    option forwardfor
+    http-request set-header X-Forwarded-Proto https
+    default_backend shop_web
+
+{% endif %}
+backend shop_web
+    mode http
+    option httpchk GET /health
+    http-check expect status 200
+{% if inventory_hostname == 'east_load_balancer' %}
+    server nginx_east {{ hostvars['east_web'].ansible_host }}:80 check inter 3s fall 3 rise 2
+    server nginx_west {{ hostvars['west_web'].ansible_host }}:80 check inter 3s fall 3 rise 2 backup
+{% else %}
+    server nginx_west {{ hostvars['west_web'].ansible_host }}:80 check inter 3s fall 3 rise 2
+    server nginx_east {{ hostvars['east_web'].ansible_host }}:80 check inter 3s fall 3 rise 2 backup
+{% endif %}
+
+frontend postgres
+    bind *:{{ haproxy_postgres_port }}
+    mode tcp
+    option tcplog
+    default_backend postgres_primary
+
+backend postgres_primary
+    mode tcp
+    option httpchk GET /primary
+    http-check expect status 200
+    default-server inter 2s fall 3 rise 2 on-marked-down shutdown-sessions
+    server pg_east {{ hostvars['east_db'].ansible_host }}:5432 check port 8008
+    server pg_west {{ hostvars['west_db'].ansible_host }}:5432 check port 8008
+
+frontend garage_s3
+    bind *:{{ haproxy_garage_port }}
+    mode tcp
+    option tcplog
+    default_backend garage_s3_nodes
+
+backend garage_s3_nodes
+    mode tcp
+    balance roundrobin
+    option httpchk GET /health
+    http-check expect status 200
+    option allbackups
+{% if inventory_hostname == 'east_load_balancer' %}
+    server garage_east {{ hostvars['east_storage'].ansible_host }}:3900 check port {{ haproxy_garage_admin_port }} inter 3s fall 3 rise 2
+    server garage_cloud {{ hostvars['cloud_s3'].ansible_host }}:3900 check port {{ haproxy_garage_admin_port }} inter 3s fall 3 rise 2 backup
+    server garage_west {{ hostvars['west_storage'].ansible_host }}:3900 check port {{ haproxy_garage_admin_port }} inter 3s fall 3 rise 2 backup
+{% else %}
+    server garage_west {{ hostvars['west_storage'].ansible_host }}:3900 check port {{ haproxy_garage_admin_port }} inter 3s fall 3 rise 2
+    server garage_cloud {{ hostvars['cloud_s3'].ansible_host }}:3900 check port {{ haproxy_garage_admin_port }} inter 3s fall 3 rise 2 backup
+    server garage_east {{ hostvars['east_storage'].ansible_host }}:3900 check port {{ haproxy_garage_admin_port }} inter 3s fall 3 rise 2 backup
+{% endif %}
+
+listen stats
+    bind *:{{ haproxy_stats_port }}
+    mode http
+    stats enable
+    stats uri /stats
+    stats refresh 5s
+    stats auth {{ vault_haproxy_stats_user }}:{{ vault_haproxy_stats_password }}

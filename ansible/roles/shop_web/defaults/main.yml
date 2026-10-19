@@ -1,0 +1,8 @@
+---
+shop_web_dir: /opt/shop-web
+shop_db_port: 5000
+shop_db_name: shopdb
+shop_db_user: appuser
+shop_garage_port: 3900
+shop_garage_region: garage
+shop_garage_bucket: product-images
