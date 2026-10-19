@@ -1,4 +1,4 @@
-# Server_Infrastructure_Project
+# Distributed Server Infrastructure Project
 
 <img width="2436" height="2089" alt="Infra drawio" src="https://github.com/user-attachments/assets/377eb8fc-96aa-4c86-bc22-b0ea22466b91" />
 
