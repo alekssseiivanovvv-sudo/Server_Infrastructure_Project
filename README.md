@@ -1,13 +1,46 @@
-# Distributed Server Infrastructure Project
+# ⚙️ Distributed Server Infrastructure Project
 
-<img width="2436" height="2089" alt="Infra drawio" src="https://github.com/user-attachments/assets/377eb8fc-96aa-4c86-bc22-b0ea22466b91" />
+<div align="center">
 
-# Contains:
-- Ansible
-- Ansible Vault (encrypted)
-- Terraform
-- Cloud-init & VMs configurations
-- Docker container files
-- Database files
-- Services configurations
-- Bash scripts
+![Infrastructure Diagram](https://github.com/user-attachments/assets/2b223132-fe1e-4831-9591-ea57c40713b0)
+
+**A distributed infrastructure project built entirely with Infrastructure as Code & Open Source solutions.**
+
+</div>
+
+---
+
+[![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://www.linux.org/)
+[![KVM](https://img.shields.io/badge/KVM-CC0000?style=for-the-badge&logo=linux&logoColor=white)](https://www.linux-kvm.org/)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com/)
+[![Alpine Linux](https://img.shields.io/badge/Alpine_Linux-0D597F?style=for-the-badge&logo=alpinelinux&logoColor=white)](https://alpinelinux.org/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![Ansible](https://img.shields.io/badge/Ansible-EE0000?style=for-the-badge&logo=ansible&logoColor=white)](https://www.ansible.com/)
+[![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=for-the-badge&logo=terraform&logoColor=white)](https://www.terraform.io/)
+[![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Bash](https://img.shields.io/badge/Bash-4EAA25?style=for-the-badge&logo=gnubash&logoColor=white)](https://www.gnu.org/software/bash/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![NGINX](https://img.shields.io/badge/NGINX-009639?style=for-the-badge&logo=nginx&logoColor=white)](https://nginx.org/)
+[![HAProxy](https://img.shields.io/badge/HAProxy-106DA9?style=for-the-badge&logo=haproxy&logoColor=white)](https://www.haproxy.org/)
+[![fail2ban](https://img.shields.io/badge/fail2ban-FF6600?style=for-the-badge&logo=linux&logoColor=white)](https://www.fail2ban.org/)
+[![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white)](https://prometheus.io/)
+[![restic](https://img.shields.io/badge/restic-4A90D9?style=for-the-badge&logo=restic&logoColor=white)](https://restic.net/)
+[![Grafana](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://grafana.com/)
+[![Garage](https://img.shields.io/badge/Garage-FF6B35?style=for-the-badge&logoColor=white)](https://garagehq.deuxfleurs.fr/)
+
+---
+
+
+## 📖 Overview
+
+This project is a **reference implementation** of a distributed server infrastructure designed to demonstrate real-world **DevOps**, **SysAdmin**, and **Infrastructure Engineering** practices. Everything — from VM provisioning to secrets management — is automated and reproducible.
+
+> 🎯 **Goal:** Build a resilient, self-healing, and observable infrastructure stack using only open-source tools.
+
+## 📑 Table of Contents
+
+- [Overview](#-overview)
+- [Documentation](#-documentation) (WIP)
+
+---
+
