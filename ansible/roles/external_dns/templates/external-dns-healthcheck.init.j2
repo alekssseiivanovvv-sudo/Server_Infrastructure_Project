@@ -1,0 +1,12 @@
+#!/sbin/openrc-run
+
+name="External DNS HAProxy health checker"
+description="Updates shop DNS records from HAProxy health checks"
+command="/usr/local/sbin/external-dns-healthcheck"
+command_background="yes"
+pidfile="/run/${RC_SVCNAME}.pid"
+
+depend() {
+    need net dnsmasq
+    after tailscale
+}

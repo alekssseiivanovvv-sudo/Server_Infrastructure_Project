@@ -1,0 +1,100 @@
+---
+- name: Validate external DNS host and variables
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.distribution == 'Alpine'
+      - inventory_hostname in groups['inet_dns_servers']
+      - groups['inet_dns_servers'] | length == 1
+      - groups['balance_servers'] | length == 2
+      - external_dns_names | length > 0
+      - external_dns_backends | length == 2
+      - external_dns_upstream_servers | length > 0
+    fail_msg: >-
+      External DNS requires one Alpine DNS node, two HAProxy nodes, at least
+      one DNS name and at least one upstream resolver.
+
+- name: Install external DNS packages
+  community.general.apk:
+    name:
+      - curl
+      - dnsmasq
+    state: present
+    update_cache: true
+
+- name: Create external DNS state directory
+  ansible.builtin.file:
+    path: /var/lib/external-dns
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Seed the shop DNS records
+  ansible.builtin.template:
+    src: shop.hosts.j2
+    dest: /var/lib/external-dns/shop.hosts
+    owner: root
+    group: root
+    mode: '0644'
+    force: false
+
+- name: Install external dnsmasq configuration
+  ansible.builtin.template:
+    src: dnsmasq.conf.j2
+    dest: /etc/dnsmasq.conf
+    owner: root
+    group: root
+    mode: '0644'
+    validate: dnsmasq --test --conf-file=%s
+  notify: Restart external dnsmasq
+
+- name: Install HAProxy health-check script
+  ansible.builtin.template:
+    src: external-dns-healthcheck.sh.j2
+    dest: /usr/local/sbin/external-dns-healthcheck
+    owner: root
+    group: root
+    mode: '0755'
+  notify: Restart external DNS health checker
+
+- name: Install HAProxy health-check service
+  ansible.builtin.template:
+    src: external-dns-healthcheck.init.j2
+    dest: /etc/init.d/external-dns-healthcheck
+    owner: root
+    group: root
+    mode: '0755'
+  notify: Restart external DNS health checker
+
+- name: Apply updated external DNS configuration
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start external dnsmasq
+  ansible.builtin.service:
+    name: dnsmasq
+    enabled: true
+    state: started
+
+- name: Enable and start external DNS health checker
+  ansible.builtin.service:
+    name: external-dns-healthcheck
+    enabled: true
+    state: started
+
+- name: Wait for external DNS listener
+  ansible.builtin.wait_for:
+    host: "{{ external_dns_listen_address }}"
+    port: 53
+    timeout: 30
+
+- name: Verify external shop DNS resolution
+  ansible.builtin.command:
+    argv:
+      - nslookup
+      - "{{ external_dns_names[0] }}"
+      - 127.0.0.1
+  register: external_dns_lookup
+  changed_when: false
+  until: external_dns_lookup.rc == 0
+  retries: 6
+  delay: "{{ external_dns_check_interval }}"

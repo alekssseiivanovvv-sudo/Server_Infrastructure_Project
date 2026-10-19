@@ -21,3 +21,12 @@
 
   roles:
     - haproxy
+
+
+- name: Configure external DNS failover for the shop
+  hosts: inet_dns_servers
+  become: true
+  gather_facts: true
+
+  roles:
+    - external_dns

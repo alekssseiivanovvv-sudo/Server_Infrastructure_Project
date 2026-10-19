@@ -1,0 +1,3 @@
+{% for backend in external_dns_backends %}
+{{ backend.address }} {{ external_dns_names | join(' ') }}
+{% endfor %}

@@ -1,0 +1,19 @@
+domain-needed
+bogus-priv
+no-resolv
+no-hosts
+
+domain={{ external_dns_domain }}
+local=/{{ external_dns_domain }}/
+
+listen-address=127.0.0.1
+listen-address={{ external_dns_listen_address }}
+bind-dynamic
+
+cache-size={{ external_dns_cache_size }}
+local-ttl={{ external_dns_ttl }}
+addn-hosts=/var/lib/external-dns/shop.hosts
+
+{% for dns_server in external_dns_upstream_servers %}
+server={{ dns_server }}
+{% endfor %}

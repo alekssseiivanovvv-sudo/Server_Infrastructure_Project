@@ -1,0 +1,36 @@
+#!/bin/sh
+set -eu
+
+HOSTS_FILE=/var/lib/external-dns/shop.hosts
+TEMP_FILE="${HOSTS_FILE}.tmp"
+DNS_NAMES='{{ external_dns_names | join(' ') }}'
+
+update_records() {
+    : > "${TEMP_FILE}"
+
+{% for backend in external_dns_backends %}
+    if curl --silent --show-error --fail \
+        --max-time {{ external_dns_health_timeout }} \
+        --output /dev/null \
+        {{ backend.health_url | quote }}; then
+        printf '%s %s\n' \
+            {{ backend.address | quote }} \
+            "${DNS_NAMES}" >> "${TEMP_FILE}"
+    fi
+
+{% endfor %}
+    if ! cmp -s "${TEMP_FILE}" "${HOSTS_FILE}"; then
+        mv "${TEMP_FILE}" "${HOSTS_FILE}"
+        rc-service dnsmasq reload >/dev/null 2>&1 || \
+            rc-service dnsmasq restart >/dev/null 2>&1
+    else
+        rm -f "${TEMP_FILE}"
+    fi
+}
+
+trap 'rm -f "${TEMP_FILE}"' EXIT INT TERM
+
+while true; do
+    update_records
+    sleep {{ external_dns_check_interval }}
+done

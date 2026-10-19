@@ -1,0 +1,24 @@
+---
+external_dns_domain: "{{ project_dns_domain }}"
+external_dns_names:
+  - "shop.{{ external_dns_domain }}"
+  - "load-balancer.{{ external_dns_domain }}"
+  - "lb.{{ external_dns_domain }}"
+
+external_dns_listen_address: "{{ ansible_host }}"
+external_dns_upstream_servers: "{{ project_dns_upstream_servers }}"
+external_dns_ttl: 10
+external_dns_cache_size: 1000
+
+external_dns_health_path: /health
+external_dns_health_timeout: 3
+external_dns_check_interval: 10
+external_dns_backends:
+  - name: east
+    address: "{{ hostvars['east_load_balancer'].ansible_host }}"
+    health_url: >-
+      http://{{ hostvars['east_load_balancer'].ansible_host }}{{ external_dns_health_path }}
+  - name: west
+    address: "{{ hostvars['west_load_balancer'].ansible_host }}"
+    health_url: >-
+      http://{{ hostvars['west_load_balancer'].ansible_host }}{{ external_dns_health_path }}
