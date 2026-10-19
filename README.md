@@ -10,6 +10,19 @@
 
 ---
 
+## 📖 Overview
+
+This project is a **reference implementation** of a distributed server infrastructure designed to demonstrate real-world **DevOps**, **SysAdmin**, and **Infrastructure Engineering** practices. Everything — from VM provisioning to secrets management — is automated and reproducible.
+
+> 🎯 **Goal:** Build a resilient, self-healing, and observable infrastructure stack using only open-source tools.
+
+## 📑 Table of Contents
+
+- [Overview](#-overview)
+- [Documentation](#-documentation) (WIP)
+
+---
+
 <div align="left">
 
 [![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://www.linux.org/)
@@ -33,18 +46,3 @@
 </div>
 
 ---
-
-
-## 📖 Overview
-
-This project is a **reference implementation** of a distributed server infrastructure designed to demonstrate real-world **DevOps**, **SysAdmin**, and **Infrastructure Engineering** practices. Everything — from VM provisioning to secrets management — is automated and reproducible.
-
-> 🎯 **Goal:** Build a resilient, self-healing, and observable infrastructure stack using only open-source tools.
-
-## 📑 Table of Contents
-
-- [Overview](#-overview)
-- [Documentation](#-documentation) (WIP)
-
----
-
