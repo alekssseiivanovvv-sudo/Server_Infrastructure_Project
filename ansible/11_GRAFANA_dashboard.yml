@@ -1,6 +1,6 @@
 ---
 - name: Deploy Grafana dashboards and datasources
-  hosts: monitoring
+  hosts: monitoring_servers
   become: true
   vars_files:
     - group_vars/group/all/vault.yml

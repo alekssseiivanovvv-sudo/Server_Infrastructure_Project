@@ -28,5 +28,8 @@
   become: true
   gather_facts: true
 
+  vars_files:
+    - group_vars/group/all/vault.yml  
+
   roles:
     - external_dns

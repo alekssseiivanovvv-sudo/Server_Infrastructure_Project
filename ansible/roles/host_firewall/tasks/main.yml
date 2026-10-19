@@ -34,6 +34,14 @@
     - Apply host firewall on Ubuntu
     - Apply host firewall on Alpine
 
+- name: Create local system binary directory
+  ansible.builtin.file:
+    path: /usr/local/sbin
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
 - name: Install host firewall loader
   ansible.builtin.copy:
     dest: /usr/local/sbin/project-host-firewall

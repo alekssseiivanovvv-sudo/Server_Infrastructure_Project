@@ -1,0 +1,10 @@
+---
+- name: Restart external dnsmasq
+  ansible.builtin.service:
+    name: dnsmasq
+    state: restarted
+
+- name: Restart external DNS health checker
+  ansible.builtin.service:
+    name: external-dns-healthcheck
+    state: restarted

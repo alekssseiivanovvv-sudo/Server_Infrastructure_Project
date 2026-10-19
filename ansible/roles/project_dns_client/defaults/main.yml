@@ -1,0 +1,5 @@
+---
+project_dns_client_router:
+  east: 192.168.72.1
+  west: 192.168.73.1
+  cloud: 192.168.74.1

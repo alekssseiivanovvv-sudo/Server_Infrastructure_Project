@@ -17,6 +17,8 @@
   become: true
   gather_facts: true
 
+  vars_files:
+    - group_vars/group/all/vault.yml
   roles:
     - project_dns_client
 
