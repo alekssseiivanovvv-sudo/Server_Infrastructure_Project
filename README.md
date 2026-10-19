@@ -10,6 +10,8 @@
 
 ---
 
+<div align="left">
+
 [![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://www.linux.org/)
 [![KVM](https://img.shields.io/badge/KVM-CC0000?style=for-the-badge&logo=linux&logoColor=white)](https://www.linux-kvm.org/)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com/)
@@ -27,6 +29,8 @@
 [![restic](https://img.shields.io/badge/restic-4A90D9?style=for-the-badge&logo=restic&logoColor=white)](https://restic.net/)
 [![Grafana](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://grafana.com/)
 [![Garage](https://img.shields.io/badge/Garage-FF6B35?style=for-the-badge&logoColor=white)](https://garagehq.deuxfleurs.fr/)
+
+</div>
 
 ---
 
