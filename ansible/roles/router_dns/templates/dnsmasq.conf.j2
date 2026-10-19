@@ -1,0 +1,35 @@
+domain-needed
+bogus-priv
+no-resolv
+no-hosts
+
+domain={{ project_dns_domain }}
+local=/{{ project_dns_domain }}/
+
+interface=lo
+interface={{ router_dns_bind_interface }}
+listen-address=127.0.0.1
+listen-address={{ router_lan_addresses[inventory_hostname] }}
+bind-interfaces
+
+cache-size={{ router_dns_cache_size }}
+
+{% for dns_server in project_dns_upstream_servers %}
+server={{ dns_server }}
+{% endfor %}
+
+# Inventory-backed records. Router management uses Tailscale, so router names
+# intentionally resolve to their LAN addresses for project clients.
+{% for host in groups['infrastructure'] %}
+{% set record_ip = router_lan_addresses[host] if host in groups['routers'] else hostvars[host].ansible_host %}
+host-record={{ host | replace('_', '-') }}.{{ project_dns_domain }},{{ host | replace('_', '-') }},{{ record_ip }}
+{% endfor %}
+host-record=inet-dns.{{ project_dns_domain }},inet-dns,{{ hostvars['inet_dns'].ansible_host }}
+
+# Friendly service aliases.
+host-record=monitoring.{{ project_dns_domain }},grafana.{{ project_dns_domain }},prometheus.{{ project_dns_domain }},loki.{{ project_dns_domain }},{{ hostvars['cloud_monitoring'].ansible_host }}
+host-record=quorum.{{ project_dns_domain }},{{ hostvars['cloud_quorum'].ansible_host }}
+host-record=s3.{{ project_dns_domain }},{{ hostvars['cloud_s3'].ansible_host }}
+{% for service_ip in router_dns_service_addresses[inventory_hostname] %}
+host-record=shop.{{ project_dns_domain }},load-balancer.{{ project_dns_domain }},lb.{{ project_dns_domain }},{{ service_ip }}
+{% endfor %}

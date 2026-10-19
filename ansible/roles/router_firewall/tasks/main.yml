@@ -9,13 +9,14 @@
   ansible.builtin.assert:
     that:
       - router_firewall_ssh_port is defined
-      - router_firewall_lan_addresses[inventory_hostname] is defined
+      - router_lan_addresses[inventory_hostname] is defined
       - router_firewall_lan_subnets[inventory_hostname] is defined
-      - router_firewall_project_subnets | length > 0
+      - project_lan_subnets | length > 0
+      - project_tailnet_ipv4 is defined
     fail_msg: "Router firewall variables are incomplete for this router."
 
 - name: Install nftables
-  ansible.builtin.apk:
+  community.general.apk:
     name:
       - nftables
       - nftables-openrc
@@ -44,7 +45,7 @@
     group: root
     mode: "0600"
     validate: nft -c -f %s
-  notify: Restart nftables
+  notify: Apply router firewall
 
 - name: Enable and start nftables
   ansible.builtin.service:
@@ -52,11 +53,14 @@
     enabled: true
     state: started
 
+- name: Apply updated firewall before continuing
+  ansible.builtin.meta: flush_handlers
+
 - name: Show router firewall summary
   ansible.builtin.debug:
     msg:
       - "Firewall installed on {{ inventory_hostname }}."
       - "LAN {{ router_firewall_lan_subnets[inventory_hostname] }} is routed through {{ router_firewall_lan_interface }}."
       - "SSH is allowed only through {{ router_firewall_tailscale_interface }} on port {{ router_firewall_ssh_port }}."
-      - "DNS is allowed from LAN clients to {{ router_firewall_lan_addresses[inventory_hostname] }}."
-      - "Node Exporter port 9100 is allowed from project LANs and Tailscale."
+      - "DNS is allowed from LAN clients to {{ router_lan_addresses[inventory_hostname] }}."
+      - "Node Exporter port 9100 is allowed from the monitoring server and Tailscale."

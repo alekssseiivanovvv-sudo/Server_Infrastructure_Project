@@ -1,0 +1,3 @@
+---
+router_dns_bind_interface: eth1
+router_dns_cache_size: 1000

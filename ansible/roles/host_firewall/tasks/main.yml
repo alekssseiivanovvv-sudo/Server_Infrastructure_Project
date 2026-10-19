@@ -1,0 +1,119 @@
+---
+- name: Check supported host firewall OS
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.distribution in ["Alpine", "Ubuntu"]
+      - host_firewall_ssh_port is defined
+      - project_lan_subnets | length > 0
+      - project_tailnet_ipv4 is defined
+    fail_msg: "Host firewall supports only Alpine and Ubuntu project VMs."
+
+- name: Install nftables on Alpine
+  community.general.apk:
+    name: nftables
+    state: present
+    update_cache: true
+  when: ansible_facts.distribution == "Alpine"
+
+- name: Install nftables on Ubuntu
+  ansible.builtin.apt:
+    name: nftables
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_facts.distribution != "Alpine"
+
+- name: Install host firewall rules
+  ansible.builtin.template:
+    src: project-host.nft.j2
+    dest: /etc/project-host.nft
+    owner: root
+    group: root
+    mode: "0600"
+  notify:
+    - Apply host firewall on Ubuntu
+    - Apply host firewall on Alpine
+
+- name: Install host firewall loader
+  ansible.builtin.copy:
+    dest: /usr/local/sbin/project-host-firewall
+    owner: root
+    group: root
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      set -eu
+      if ! /usr/sbin/nft list table inet {{ host_firewall_table }} >/dev/null 2>&1; then
+        /usr/sbin/nft add table inet {{ host_firewall_table }}
+      fi
+      /usr/sbin/nft --check --file /etc/project-host.nft
+      /usr/sbin/nft --file /etc/project-host.nft
+  notify:
+    - Apply host firewall on Ubuntu
+    - Apply host firewall on Alpine
+
+- name: Install Ubuntu host firewall service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/project-host-firewall.service
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Project virtual machine firewall
+      Wants=network-online.target
+      After=network-online.target
+      Before=docker.service etcd.service patroni.service garage.service haproxy.service
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/project-host-firewall
+      ExecReload=/usr/local/sbin/project-host-firewall
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+  when: ansible_facts.distribution != "Alpine"
+  notify: Apply host firewall on Ubuntu
+
+- name: Install Alpine host firewall service
+  ansible.builtin.copy:
+    dest: /etc/init.d/project-host-firewall
+    owner: root
+    group: root
+    mode: "0755"
+    content: |
+      #!/sbin/openrc-run
+      description="Project virtual machine firewall"
+
+      depend() {
+        need net
+        after tailscale
+        before docker haproxy
+      }
+
+      start() {
+        ebegin "Applying project host firewall"
+        /usr/local/sbin/project-host-firewall
+        eend $?
+      }
+  when: ansible_facts.distribution == "Alpine"
+  notify: Apply host firewall on Alpine
+
+- name: Enable and start Ubuntu host firewall
+  ansible.builtin.systemd:
+    name: project-host-firewall
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: ansible_facts.distribution != "Alpine"
+
+- name: Enable and start Alpine host firewall
+  ansible.builtin.service:
+    name: project-host-firewall
+    enabled: true
+    state: started
+  when: ansible_facts.distribution == "Alpine"
+
+- name: Apply updated host firewall rules
+  ansible.builtin.meta: flush_handlers

@@ -16,3 +16,30 @@ backup_run_now: false
 backup_automation_home: /home/ansible_admin
 data_admin_ipv4: []
 data_extra_client_ipv4: []
+
+# Shared network data for router DNS and nftables roles.
+project_dns_domain: project.local
+project_dns_upstream_servers:
+  - 1.1.1.1
+  - 9.9.9.9
+
+project_tailnet_ipv4: 100.64.0.0/10
+project_lan_subnets:
+  - 192.168.72.0/27
+  - 192.168.73.0/27
+  - 192.168.74.0/27
+
+router_lan_addresses:
+  east_router: 192.168.72.1
+  west_router: 192.168.73.1
+  cloud_router: 192.168.74.1
+
+# Internal service names point to the nearest HAProxy. Cloud DNS returns both.
+router_dns_service_addresses:
+  east_router:
+    - 192.168.72.2
+  west_router:
+    - 192.168.73.2
+  cloud_router:
+    - 192.168.72.2
+    - 192.168.73.2

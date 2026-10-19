@@ -99,6 +99,10 @@ east
 west
 cloud
 
+[managed_vms:children]
+infrastructure
+external
+
 [linux_servers:children]
 web_servers
 db_servers
@@ -107,7 +111,7 @@ s3_servers
 balance_servers
 monitoring_servers
 quorum_servers
-external_dns
+inet_dns_servers
 
 [linux_servers:vars]
 ansible_port="{{ vault_ssh_port }}"
@@ -130,4 +134,4 @@ quorum_servers
 routers
 web_servers
 balance_servers
-inet_dns
+inet_dns_servers

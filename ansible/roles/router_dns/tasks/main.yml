@@ -1,0 +1,61 @@
+---
+- name: Check router DNS variables
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.distribution == "Alpine"
+      - router_lan_addresses[inventory_hostname] is defined
+      - router_dns_service_addresses[inventory_hostname] is defined
+      - project_dns_upstream_servers | length > 0
+    fail_msg: "Router DNS variables are incomplete for {{ inventory_hostname }}."
+
+- name: Install dnsmasq
+  community.general.apk:
+    name: dnsmasq
+    state: present
+    update_cache: true
+
+- name: Configure dnsmasq
+  ansible.builtin.template:
+    src: dnsmasq.conf.j2
+    dest: /etc/dnsmasq.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: dnsmasq --test --conf-file=%s
+  notify: Restart dnsmasq
+
+- name: Enable and start dnsmasq
+  ansible.builtin.service:
+    name: dnsmasq
+    enabled: true
+    state: started
+
+- name: Apply updated DNS configuration
+  ansible.builtin.meta: flush_handlers
+
+- name: Prevent DHCP client from replacing the router resolver
+  ansible.builtin.lineinfile:
+    path: /etc/dhcpcd.conf
+    line: nohook resolv.conf
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Configure router to query local dnsmasq
+  ansible.builtin.copy:
+    dest: /etc/resolv.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      search {{ project_dns_domain }}
+      nameserver 127.0.0.1
+
+- name: Verify local DNS resolution
+  ansible.builtin.command:
+    argv:
+      - nslookup
+      - "east-db.{{ project_dns_domain }}"
+      - 127.0.0.1
+  changed_when: false

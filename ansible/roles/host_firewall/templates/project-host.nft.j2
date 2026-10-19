@@ -1,0 +1,77 @@
+flush table inet {{ host_firewall_table }}
+
+table inet {{ host_firewall_table }} {
+  set project_lans {
+    type ipv4_addr
+    flags interval
+    elements = { {{ project_lan_subnets | join(', ') }} }
+  }
+
+  set tailnet {
+    type ipv4_addr
+    flags interval
+    elements = { {{ project_tailnet_ipv4 }} }
+  }
+
+  chain input {
+    type filter hook input priority -10; policy drop;
+
+    ct state invalid drop
+    ct state established,related accept
+    iifname "lo" accept
+    meta l4proto { icmp, ipv6-icmp } accept
+
+    # Administration is accepted only from Tailscale addresses.
+    ip saddr @tailnet tcp dport {{ host_firewall_ssh_port }} accept
+
+{% if inventory_hostname in groups['node_exporter_agents'] %}
+    ip saddr {{ hostvars[groups['monitoring_servers'][0]].ansible_host }} tcp dport 9100 accept
+{% endif %}
+
+{% if inventory_hostname in groups['web_servers'] %}
+    ip saddr { {{ groups['balance_servers'] | map('extract', hostvars, 'ansible_host') | join(', ') }} } tcp dport 80 accept
+{% endif %}
+
+{% if inventory_hostname in groups['balance_servers'] %}
+    ip saddr @project_lans tcp dport { 80, 443 } accept
+    ip saddr @tailnet tcp dport { 80, 443 } accept
+    ip saddr { {{ groups['web_servers'] | map('extract', hostvars, 'ansible_host') | join(', ') }} } tcp dport { 3900, 5000 } accept
+    ip saddr {{ hostvars[groups['monitoring_servers'][0]].ansible_host }} tcp dport 8404 accept
+    ip saddr @tailnet tcp dport 8404 accept
+{% endif %}
+
+{% if inventory_hostname in groups['etcd_servers'] %}
+    ip saddr { {{ groups['etcd_servers'] | map('extract', hostvars, 'ansible_host') | join(', ') }} } tcp dport { 2379, 2380 } accept
+{% endif %}
+
+{% if inventory_hostname in groups['patroni_servers'] %}
+    ip saddr { {{ ((groups['patroni_servers'] + groups['balance_servers'] + groups['monitoring_servers']) | unique | map('extract', hostvars, 'ansible_host') | list + data_admin_ipv4) | unique | join(', ') }} } tcp dport 8008 accept
+    ip saddr { {{ ((groups['patroni_servers'] + groups['balance_servers'] + groups['backup_storage_servers']) | unique | map('extract', hostvars, 'ansible_host') | list + data_admin_ipv4 + data_extra_client_ipv4) | unique | join(', ') }} } tcp dport 5432 accept
+{% endif %}
+
+{% if inventory_hostname in groups['s3_servers'] %}
+    ip saddr { {{ groups['s3_servers'] | map('extract', hostvars, 'ansible_host') | join(', ') }} } tcp dport 3901 accept
+    ip saddr { {{ (groups['balance_servers'] | map('extract', hostvars, 'ansible_host') | list + data_admin_ipv4 + data_extra_client_ipv4) | unique | join(', ') }} } tcp dport 3900 accept
+    ip saddr { {{ ((groups['s3_servers'] + groups['balance_servers'] + groups['monitoring_servers']) | unique | map('extract', hostvars, 'ansible_host') | list + data_admin_ipv4) | unique | join(', ') }} } tcp dport 3903 accept
+{% endif %}
+
+{% if inventory_hostname in groups['monitoring_servers'] %}
+    ip saddr @project_lans tcp dport { 3000, 3100, 9090 } accept
+    ip saddr @tailnet tcp dport { 3000, 3100, 9090 } accept
+{% endif %}
+
+{% if inventory_hostname in groups['inet_dns_servers'] %}
+    udp dport 53 accept
+    tcp dport 53 accept
+{% endif %}
+  }
+
+  # Docker-published web port is forwarded to the container instead of INPUT.
+  chain forward {
+    type filter hook forward priority -10; policy accept;
+{% if inventory_hostname in groups['web_servers'] %}
+    ip saddr { {{ groups['balance_servers'] | map('extract', hostvars, 'ansible_host') | join(', ') }} } tcp dport 80 accept
+    tcp dport 80 drop
+{% endif %}
+  }
+}

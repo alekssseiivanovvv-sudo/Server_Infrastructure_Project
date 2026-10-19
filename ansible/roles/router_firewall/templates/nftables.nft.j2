@@ -6,7 +6,7 @@ table inet lab_router {
   set project_lans {
     type ipv4_addr;
     flags interval;
-    elements = { {{ router_firewall_project_subnets | join(', ') }} };
+    elements = { {{ project_lan_subnets | join(', ') }} };
   }
 
   chain input {
@@ -25,10 +25,10 @@ table inet lab_router {
     iifname "{{ router_firewall_wan_interface }}" udp sport 67 udp dport 68 accept
     iifname "{{ router_firewall_wan_interface }}" udp dport 41641 accept
 
-    iifname "{{ router_firewall_lan_interface }}" ip saddr {{ router_firewall_lan_subnets[inventory_hostname] }} ip daddr {{ router_firewall_lan_addresses[inventory_hostname] }} udp dport 53 accept
-    iifname "{{ router_firewall_lan_interface }}" ip saddr {{ router_firewall_lan_subnets[inventory_hostname] }} ip daddr {{ router_firewall_lan_addresses[inventory_hostname] }} tcp dport 53 accept
+    iifname "{{ router_firewall_lan_interface }}" ip saddr {{ router_firewall_lan_subnets[inventory_hostname] }} ip daddr {{ router_lan_addresses[inventory_hostname] }} udp dport 53 accept
+    iifname "{{ router_firewall_lan_interface }}" ip saddr {{ router_firewall_lan_subnets[inventory_hostname] }} ip daddr {{ router_lan_addresses[inventory_hostname] }} tcp dport 53 accept
 
-    ip saddr @project_lans tcp dport 9100 accept
+    ip saddr {{ hostvars[groups['monitoring_servers'][0]].ansible_host }} tcp dport 9100 accept
     iifname "{{ router_firewall_tailscale_interface }}" tcp dport 9100 accept
   }
 

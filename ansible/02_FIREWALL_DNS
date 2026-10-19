@@ -1,0 +1,33 @@
+---
+- name: Configure firewall and DNS on project routers
+  hosts: routers
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  roles:
+    - router_firewall
+    - router_dns
+
+
+- name: Configure project DNS on internal virtual machines
+  hosts: "infrastructure:!routers"
+  become: true
+  gather_facts: true
+
+  roles:
+    - project_dns_client
+
+
+- name: Configure local firewall on virtual machines
+  hosts: linux_servers
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  roles:
+    - host_firewall

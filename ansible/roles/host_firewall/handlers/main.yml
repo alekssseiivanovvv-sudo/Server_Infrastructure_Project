@@ -1,0 +1,12 @@
+---
+- name: Apply host firewall on Ubuntu
+  ansible.builtin.systemd:
+    name: project-host-firewall
+    state: restarted
+    daemon_reload: true
+  when: ansible_facts.distribution != "Alpine"
+
+- name: Apply host firewall on Alpine
+  ansible.builtin.command: /usr/local/sbin/project-host-firewall
+  changed_when: true
+  when: ansible_facts.distribution == "Alpine"
