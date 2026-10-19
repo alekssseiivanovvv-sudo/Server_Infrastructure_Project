@@ -33,19 +33,19 @@ variable "storage_pool" {
 variable "vm-routers" {
   description = "A map of virtual routers to create."
   type = map(object({
-    host              = string # The host to create the router on (host_1 or host_2)
-    name              = string # The name of the router
-    vcpus             = number # The number of virtual CPUs to allocate to the router
-    ram               = number # The amount of memory (in MB) to allocate to the router
-    system_drive_size = number # The size of the drive (in GB) to allocate to the router
-    base_image        = string # The image to use for the router
-    lan_address       = string # Static LAN address without a prefix
-    lan_subnet        = string # Advertised LAN subnet, for example 192.168.72.0/27
+    host              = string           # The host to create the router on (host_1 or host_2)
+    name              = string           # The name of the router
+    vcpus             = number           # The number of virtual CPUs to allocate to the router
+    ram               = number           # The amount of memory (in MB) to allocate to the router
+    system_drive_size = number           # The size of the drive (in GB) to allocate to the router
+    base_image        = string           # The image to use for the router
+    lan_address       = optional(string) # Static LAN address without a prefix
+    lan_subnet        = optional(string) # Advertised LAN subnet, for example 192.168.72.0/27
     lan_netmask       = optional(string, "255.255.255.224")
     swap_size_mb      = optional(number, 512)
     networks = object({
       wan = object({ bridge = string, mac = string })
-      lan = object({ bridge = string, mac = string })
+      lan = optional(object({ bridge = string, mac = string }))
     })
     autostart           = optional(bool, true)       # Whether to automatically start the router on host boot (default: true)
     console             = optional(bool, true)       # Whether to enable console access to the router (default: false)
@@ -117,6 +117,12 @@ variable "router_tailscale_auth_keys" {
     ])
     error_message = "Provide non-empty auth keys for cloud_router, east_router and west_router."
   }
+}
+
+variable "external_tailscale_auth_keys" {
+  description = "Tailscale auth keys for external nodes."
+  type        = map(string)
+  sensitive   = true
 }
 
 variable "enabled_hosts" {

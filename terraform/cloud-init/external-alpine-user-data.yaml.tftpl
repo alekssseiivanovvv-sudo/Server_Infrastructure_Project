@@ -1,0 +1,109 @@
+#cloud-config external DNS node
+hostname: ${jsonencode(hostname)}
+manage_etc_hosts: true
+
+users:
+  - name: ansible_admin
+    groups: [wheel]
+    shell: /bin/ash
+    lock_passwd: false
+    passwd: '$6$QBK0APohDq7STqCH$n1n9qLCeS4sQSK5Fo8QKOUG6metSV45zaLgLVvWnKQlLRyO6ici.QbobAGDd9sOuFfjXwOrNkn/9ezaDQZDhm.'
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    ssh_authorized_keys:
+      - ${jsonencode(ssh_public_key)}
+
+disable_root: true
+ssh_pwauth: false
+
+growpart:
+  mode: auto
+  devices: ["/"]
+
+resize_rootfs: true
+
+write_files:
+  - path: /etc/resolv.conf
+    owner: root:root
+    permissions: "0644"
+    content: |
+      nameserver 1.1.1.1
+      nameserver 9.9.9.9
+
+  - path: /etc/apk/repositories
+    owner: root:root
+    permissions: "0644"
+    content: |
+      https://dl-cdn.alpinelinux.org/alpine/v3.24/main
+      https://dl-cdn.alpinelinux.org/alpine/v3.24/community
+
+  - path: /root/tailscale-auth-key
+    owner: root:root
+    permissions: "0600"
+    content: ${jsonencode(tailscale_auth_key)}
+
+  - path: /etc/ssh/sshd_config
+    owner: root:root
+    permissions: "0600"
+    content: |
+      Port ${ssh_port}
+      ListenAddress 127.0.0.1
+      PermitRootLogin no
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PubkeyAuthentication yes
+      AuthorizedKeysFile .ssh/authorized_keys
+      AllowUsers ansible_admin
+      Subsystem sftp internal-sftp
+
+package_update: true
+
+packages:
+  - openssh
+  - sudo
+  - python3
+  - util-linux
+  - tailscale
+  - tailscale-openrc
+
+runcmd:
+  - |
+      set -eu
+
+      SWAP_MB=${swap_size_mb}
+
+      if [ "$SWAP_MB" -gt 0 ] && [ ! -f /swapfile ]; then
+        dd if=/dev/zero of=/swapfile bs=1M count="$SWAP_MB"
+        chmod 600 /swapfile
+        mkswap /swapfile
+      fi
+
+      if [ -f /swapfile ]; then
+        if ! grep -q '^/swapfile ' /etc/fstab; then
+          echo '/swapfile none swap sw 0 0' >> /etc/fstab
+        fi
+
+        swapon --show=NAME | grep -qx /swapfile || swapon /swapfile
+      fi
+
+      rc-update add tailscale default
+      rc-service tailscale start
+
+      tailscale up \
+        --auth-key=file:/root/tailscale-auth-key \
+        --hostname=${hostname} \
+        --accept-routes=true \
+        --accept-dns=false \
+        --netfilter-mode=on \
+        --ssh=false \
+        --timeout=120s
+
+      rm -f /root/tailscale-auth-key
+
+      TAILSCALE_IP="$(tailscale ip -4)"
+      sed -i '/^ListenAddress /d' /etc/ssh/sshd_config
+      echo "ListenAddress $TAILSCALE_IP" >> /etc/ssh/sshd_config
+
+      ssh-keygen -A
+      sshd -t
+      rc-update add sshd default
+      rc-service sshd restart

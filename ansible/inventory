@@ -47,7 +47,7 @@ west_load_balancer ansible_host=192.168.73.2
 cloud_monitoring ansible_host=192.168.74.3
 
 [inet_dns_servers]
-inet_dns ansible_host=100.200.100.200
+inet_dns ansible_host=100.100.200.200
 
 [alloy_agents:children]
 web_servers
