@@ -46,6 +46,9 @@ west_load_balancer ansible_host=192.168.73.2
 [monitoring_servers]
 cloud_monitoring ansible_host=192.168.74.3
 
+[inet_dns_servers]
+inet_dns ansible_host=100.200.100.200
+
 [alloy_agents:children]
 web_servers
 db_servers
@@ -56,6 +59,7 @@ quorum_servers
 routers
 fs_servers
 hypervisor_hosts
+inet_dns_servers
 
 [docker_servers:children]
 web_servers
@@ -87,6 +91,9 @@ cloud_monitoring
 cloud_quorum
 cloud_s3
 
+[external]
+inet_dns
+
 [infrastructure:children]
 east
 west
@@ -100,6 +107,7 @@ s3_servers
 balance_servers
 monitoring_servers
 quorum_servers
+external_dns
 
 [linux_servers:vars]
 ansible_port="{{ vault_ssh_port }}"
@@ -122,3 +130,4 @@ quorum_servers
 routers
 web_servers
 balance_servers
+inet_dns
