@@ -94,6 +94,7 @@ vm-routers = {
     console_target_type = "pty"
     console_port        = 0
   }
+}
 
   vm-servers = {
     east-db = {
@@ -432,4 +433,3 @@ vm-routers = {
       autostart = true
     }
   }
-}

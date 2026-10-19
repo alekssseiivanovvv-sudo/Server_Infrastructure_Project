@@ -1,3 +1,7 @@
-cloud-init/external-alpine-user-data.yaml.tftpl
-cloud-init/external-network-config.yaml.tftpl
-external.tf
+version: 1
+config:
+  - type: physical
+    name: eth0
+    mac_address: ${jsonencode(mac_address)}
+    subnets:
+      - type: dhcp4

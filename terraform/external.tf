@@ -34,13 +34,6 @@ variable "vm-external" {
   }
 }
 
-variable "external_tailscale_auth_keys" {
-  description = "Per-node Tailscale auth keys for external VMs."
-  type        = map(string)
-  sensitive   = true
-  default     = {}
-}
-
 locals {
   external_host_1 = {
     for key, machine in var.vm-external : key => machine
