@@ -2,6 +2,11 @@
 
  A distributed infrastructure project built entirely with Infrastructure as Code & Open Source solutions.
 
+ ## 📑 Table of Contents
+
+- [Overview](#-overview)
+- [Documentation](#-documentation) (WIP)
+
  ---
 
 ## 📖 Overview
@@ -46,7 +51,23 @@ This project is a **reference implementation** of a distributed server infrastru
 
 ---
 
-## 📑 Table of Contents
+## Skills Demonstrated
 
-- [Overview](#-overview)
-- [Documentation](#-documentation) (WIP)
+| Competency | What the Project Demonstrates |
+|---|---|
+| **Systems Engineering** | Designing a distributed infrastructure across two sites and a separate cloud segment |
+| **DevOps and Automation** | Automated infrastructure deployment and service configuration |
+| **Infrastructure as Code** | Provisioning networks, storage volumes, and virtual machines with Terraform |
+| **Configuration Management** | Configuring servers and services with Ansible |
+| **Linux Administration** | Managing Ubuntu and Alpine Linux systems, users, permissions, packages, and services |
+| **Virtualization** | Working with KVM, QEMU, and libvirt |
+| **Network Engineering** | Network segmentation, routing, NAT, VPN, DNS, and firewall configuration |
+| **High Availability** | Load balancing, replication, health checks, and automatic service failover |
+| **Database Administration** | PostgreSQL, Patroni, etcd, streaming replication, and automatic primary promotion |
+| **Distributed Storage** | S3-compatible Garage storage and software RAID 1 |
+| **Containerization** | Deploying web services and infrastructure components with Docker |
+| **Monitoring and Observability** | Collecting metrics and logs with Prometheus, Grafana, and Loki |
+| **Backup and Recovery** | Automated backups using Restic |
+| **Cybersecurity** | SSH key authentication, VPN access, firewalls, TLS, PKI, and access control |
+| **Troubleshooting** | Diagnosing networking, SSH, cloud-init, libvirt, and cluster-related issues |
+| **Version Control and Documentation** | Managing source code with Git and documenting the infrastructure architecture |
