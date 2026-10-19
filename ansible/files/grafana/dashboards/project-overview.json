@@ -24,7 +24,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "prometheus-uid"
       },
       "fieldConfig": {
         "defaults": {
@@ -101,7 +101,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "prometheus-uid"
           },
           "editorMode": "code",
           "expr": "1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))",
@@ -116,7 +116,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "prometheus-uid"
       },
       "fieldConfig": {
         "defaults": {
@@ -168,7 +168,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "prometheus-uid"
           },
           "editorMode": "code",
           "expr": "1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)",
@@ -183,7 +183,7 @@
     {
       "datasource": {
         "type": "loki",
-        "uid": "loki"
+        "uid": "loki-uid"
       },
       "gridPos": {
         "h": 9,
@@ -206,7 +206,7 @@
         {
           "datasource": {
             "type": "loki",
-            "uid": "loki"
+            "uid": "loki-uid"
           },
           "editorMode": "code",
           "expr": "{host=~\".+\"}",

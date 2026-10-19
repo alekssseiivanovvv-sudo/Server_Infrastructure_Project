@@ -10,6 +10,7 @@
     - "{{ grafana_provisioning_dir }}/datasources"
     - "{{ grafana_provisioning_dir }}/dashboards"
     - "{{ grafana_dashboards_dir }}"
+    - "{{ grafana_project_dashboards_dir }}"
 
 - name: Deploy datasource provisioning config
   ansible.builtin.template:
@@ -37,6 +38,7 @@
     - "{{ grafana_provisioning_dir }}/datasources/project.yml"
     - "{{ grafana_provisioning_dir }}/datasources/sample.yaml"
     - "{{ grafana_provisioning_dir }}/datasources/datasource.yaml"
+    - "{{ grafana_provisioning_dir }}/dashboards/project.yml"
   notify: Restart Grafana
 
 # ------------------------------------------------------------------
@@ -46,6 +48,14 @@
 # Перезапуск не нужен: провайдер перечитывает каталог раз в
 # updateIntervalSeconds (см. dashboards.yml.j2).
 # ------------------------------------------------------------------
+- name: Deploy project overview dashboard
+  ansible.builtin.copy:
+    src: "{{ grafana_project_dashboard_source }}"
+    dest: "{{ grafana_project_dashboards_dir }}/project-overview.json"
+    owner: grafana
+    group: grafana
+    mode: '0644'
+
 - name: Deploy project dashboards
   ansible.builtin.copy:
     src: "dashboards/{{ item }}"

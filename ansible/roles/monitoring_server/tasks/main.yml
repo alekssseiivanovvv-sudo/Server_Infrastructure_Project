@@ -242,47 +242,6 @@
     no_extra_spaces: true
   notify: Restart grafana
 
-- name: Create Grafana provisioning directories
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: directory
-    owner: root
-    group: grafana
-    mode: "0755"
-  loop:
-    - /etc/grafana/provisioning/datasources
-    - /etc/grafana/provisioning/dashboards
-    - /var/lib/grafana/dashboards
-    - /var/lib/grafana/dashboards/project
-
-- name: Configure Grafana datasources
-  ansible.builtin.template:
-    src: grafana-datasources.yml.j2
-    dest: /etc/grafana/provisioning/datasources/project.yml
-    owner: root
-    group: grafana
-    mode: "0644"
-  notify: Restart grafana
-
-- name: Configure Grafana dashboard provider
-  ansible.builtin.template:
-    src: grafana-dashboards.yml.j2
-    dest: /etc/grafana/provisioning/dashboards/project.yml
-    owner: root
-    group: grafana
-    mode: "0644"
-  notify: Restart grafana
-
-- name: Copy Grafana project dashboards
-  ansible.builtin.copy:
-    src: "{{ grafana_dashboard_source_dir }}/"
-    dest: /var/lib/grafana/dashboards/project/
-    owner: root
-    group: grafana
-    mode: "0644"
-    directory_mode: "0755"
-  notify: Restart grafana
-
 - name: Apply pending monitoring service handlers
   ansible.builtin.meta: flush_handlers
 

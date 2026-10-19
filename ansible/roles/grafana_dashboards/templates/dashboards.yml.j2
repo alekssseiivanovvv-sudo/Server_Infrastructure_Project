@@ -1,6 +1,17 @@
 apiVersion: 1
 
 providers:
+  - name: 'project'
+    orgId: 1
+    folder: 'Project Monitoring'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: {{ grafana_project_dashboards_dir }}
+      foldersFromFilesStructure: false
+
   - name: 'ansible'
     orgId: 1
     folder: 'Infrastructure'
@@ -10,3 +21,4 @@ providers:
     allowUiUpdates: false
     options:
       path: {{ grafana_dashboards_dir }}
+      foldersFromFilesStructure: false
