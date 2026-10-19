@@ -1,0 +1,10 @@
+---
+router_firewall_ssh_port: "{{ vault_router_ssh_port }}"
+router_firewall_wan_interface: eth0
+router_firewall_lan_interface: eth1
+router_firewall_tailscale_interface: tailscale0
+
+router_firewall_lan_subnets:
+  east_router: 192.168.72.0/27
+  west_router: 192.168.73.0/27
+  cloud_router: 192.168.74.0/27
