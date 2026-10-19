@@ -1,0 +1,57 @@
+---
+- name: Select the local project router
+  ansible.builtin.set_fact:
+    project_dns_client_site: >-
+      {{
+        'east' if inventory_hostname in groups['east'] else
+        'west' if inventory_hostname in groups['west'] else
+        'cloud'
+      }}
+
+- name: Store the local DNS server address
+  ansible.builtin.set_fact:
+    project_dns_client_server: "{{ project_dns_client_router[project_dns_client_site] }}"
+
+- name: Create systemd-resolved drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/resolved.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: ansible_facts.distribution != "Alpine"
+
+- name: Configure project DNS on Ubuntu
+  ansible.builtin.copy:
+    dest: /etc/systemd/resolved.conf.d/60-project-dns.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Resolve]
+      DNS={{ project_dns_client_server }}
+      Domains=~{{ project_dns_domain }} {{ project_dns_domain }}
+  when: ansible_facts.distribution != "Alpine"
+  notify: Restart systemd-resolved
+
+- name: Configure project DNS on Alpine
+  ansible.builtin.copy:
+    dest: /etc/resolv.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      search {{ project_dns_domain }}
+      nameserver {{ project_dns_client_server }}
+  when: ansible_facts.distribution == "Alpine"
+
+- name: Apply Ubuntu resolver changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Verify project DNS resolution
+  ansible.builtin.command:
+    argv:
+      - python3
+      - -c
+      - "import socket; socket.getaddrinfo('east-db.{{ project_dns_domain }}', None)"
+  changed_when: false

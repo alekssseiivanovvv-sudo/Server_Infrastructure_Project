@@ -76,7 +76,7 @@ module "external_host_1" {
       ssh_public_key     = local.ansible_admin_public_key
       ssh_port           = var.ssh_port
       swap_size_mb       = each.value.swap_size_mb
-      tailscale_auth_key = var.external_tailscale_auth_keys[each.key]
+      tailscale_auth_key = var.router_tailscale_auth_keys[each.key]
     }
   )
 
@@ -133,7 +133,7 @@ module "external_host_2" {
       ssh_public_key     = local.ansible_admin_public_key
       ssh_port           = var.ssh_port
       swap_size_mb       = each.value.swap_size_mb
-      tailscale_auth_key = var.external_tailscale_auth_keys[each.key]
+      tailscale_auth_key = var.router_tailscale_auth_keys[each.key]
     }
   )
 

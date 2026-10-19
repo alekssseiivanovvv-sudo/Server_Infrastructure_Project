@@ -119,12 +119,6 @@ variable "router_tailscale_auth_keys" {
   }
 }
 
-variable "external_tailscale_auth_keys" {
-  description = "Tailscale auth keys for external nodes."
-  type        = map(string)
-  sensitive   = true
-}
-
 variable "enabled_hosts" {
   description = "Hypervisors on which resources should be created."
   type        = set(string)
