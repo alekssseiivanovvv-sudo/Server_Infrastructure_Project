@@ -30,6 +30,10 @@
   hosts: etcd_servers
   become: true
   gather_facts: true
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
   tasks:
     - name: Require Ubuntu and supported cluster size
       ansible.builtin.assert:
@@ -110,12 +114,16 @@
     - name: Check required credentials
       ansible.builtin.assert:
         that:
-          - vault_postgres_superuser_password | default('') | length > 0
-          - vault_postgres_replication_password | default('') | length > 0
-          - vault_postgres_app_password | default('') | length > 0
-          - vault_postgres_backup_password | default('') | length > 0
-          - vault_patroni_api_password | default('') | length > 0
-      no_log: true
+          - lookup('vars', item, default='') | string | length > 0
+        fail_msg: "Missing or empty Vault variable: {{ item }}"
+        success_msg: "Vault variable is present: {{ item }}"
+      loop:
+        - vault_postgres_superuser_password
+        - vault_postgres_replication_password
+        - vault_postgres_app_password
+        - vault_postgres_backup_password
+        - vault_patroni_api_password
+      no_log: false
     - name: Install PostgreSQL and Patroni
       ansible.builtin.apt:
         name:
@@ -185,14 +193,15 @@
           [Install]
           WantedBy=multi-user.target
       notify: Restart Patroni
+    - name: Apply configuration before waiting
+      ansible.builtin.meta: flush_handlers
     - name: Enable Patroni
       ansible.builtin.systemd:
         name: patroni
         enabled: true
         state: started
         daemon_reload: true
-    - name: Apply configuration before waiting
-      ansible.builtin.meta: flush_handlers
+
     - name: Wait for a healthy PostgreSQL process on this node
       ansible.builtin.uri:
         url: "http://{{ ansible_host }}:8008/health"
