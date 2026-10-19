@@ -11,7 +11,7 @@
 
 ## 📖 Overview
 
-This project is a **reference implementation** of a distributed server infrastructure designed to demonstrate real-world **DevOps**, **SysAdmin**, and **Infrastructure Engineering** practices. Everything — from VM provisioning to secrets management — is automated and reproducible.
+This project is a **reference implementation** of a distributed server infrastructure designed to demonstrate **DevOps**, **SysAdmin**, and **Infrastructure Engineering** skills and understanding.
 
 > 🎯 **Goal:** Build a resilient, self-healing, and observable infrastructure stack using only open-source tools.
 
