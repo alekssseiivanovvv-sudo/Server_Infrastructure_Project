@@ -1,14 +1,8 @@
 # ⚙️ Distributed Server Infrastructure Project
 
-<div align="center">
+ A distributed infrastructure project built entirely with Infrastructure as Code & Open Source solutions.
 
-![Infrastructure Diagram](https://github.com/user-attachments/assets/2b223132-fe1e-4831-9591-ea57c40713b0)
-
-**A distributed infrastructure project built entirely with Infrastructure as Code & Open Source solutions.**
-
-</div>
-
----
+ ---
 
 ## 📖 Overview
 
@@ -16,14 +10,19 @@ This project is a **reference implementation** of a distributed server infrastru
 
 > 🎯 **Goal:** Build a resilient, self-healing, and observable infrastructure stack using only open-source tools.
 
-## 📑 Table of Contents
+<div align="center">
 
-- [Overview](#-overview)
-- [Documentation](#-documentation) (WIP)
+## Diagram
+</div>
+
+![Infrastructure Diagram](https://github.com/user-attachments/assets/2b223132-fe1e-4831-9591-ea57c40713b0)
+
 
 ---
 
 <div align="left">
+
+## Stack
 
 [![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://www.linux.org/)
 [![KVM](https://img.shields.io/badge/KVM-CC0000?style=for-the-badge&logo=linux&logoColor=white)](https://www.linux-kvm.org/)
@@ -46,3 +45,8 @@ This project is a **reference implementation** of a distributed server infrastru
 </div>
 
 ---
+
+## 📑 Table of Contents
+
+- [Overview](#-overview)
+- [Documentation](#-documentation) (WIP)
