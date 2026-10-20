@@ -57,7 +57,7 @@ This project is a **reference implementation** of a distributed server infrastru
 |---|---|
 | **Systems Engineering** | Designing a distributed infrastructure across two sites and a separate cloud segment |
 | **DevOps and Automation** | Automated infrastructure deployment and service configuration |
-| **Infrastructure as Code** | Provisioning networks, storage volumes, and virtual machines with Terraform |
+| **Infrastructure as Code** | Provisioning networks, storage volumes, virtual machines & cloud-init with Terraform |
 | **Configuration Management** | Configuring servers and services with Ansible |
 | **Linux Administration** | Managing Ubuntu and Alpine Linux systems, users, permissions, packages, and services |
 | **Virtualization** | Working with KVM, QEMU, and libvirt |
@@ -66,7 +66,7 @@ This project is a **reference implementation** of a distributed server infrastru
 | **Database Administration** | PostgreSQL, Patroni, etcd, streaming replication, and automatic primary promotion |
 | **Distributed Storage** | S3-compatible Garage storage and software RAID 1 |
 | **Containerization** | Deploying web services and infrastructure components with Docker |
-| **Monitoring and Observability** | Collecting metrics and logs with Prometheus, Grafana, and Loki |
+| **Monitoring and Observability** | Collecting metrics and logs with Prometheus, Grafana, and Loki + Alerts via Telegram Bot |
 | **Backup and Recovery** | Automated backups using Restic |
 | **Cybersecurity** | SSH key authentication, VPN access, firewalls, TLS, PKI, and access control |
 | **Troubleshooting** | Diagnosing networking, SSH, cloud-init, libvirt, and cluster-related issues |
