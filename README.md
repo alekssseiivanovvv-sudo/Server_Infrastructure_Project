@@ -69,5 +69,6 @@ This project is a **reference implementation** of a distributed server infrastru
 | **Monitoring and Observability** | Collecting metrics and logs with Prometheus, Grafana, and Loki + Alerts via Telegram Bot |
 | **Backup and Recovery** | Automated backups using Restic |
 | **Cybersecurity** | SSH key authentication, VPN access, firewalls, TLS, PKI, and access control |
+| **Scripting** | Bash, Python and HTML scripting |
 | **Troubleshooting** | Diagnosing networking, SSH, cloud-init, libvirt, and cluster-related issues |
 | **Version Control and Documentation** | Managing source code with Git and documenting the infrastructure architecture |
