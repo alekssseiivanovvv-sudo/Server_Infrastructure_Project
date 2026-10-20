@@ -20,9 +20,7 @@ This project is a **reference implementation** of a distributed server infrastru
 ## Diagram
 </div>
 
-<img width="2436" height="2089" alt="Infra drawio (2)" src="https://github.com/user-attachments/assets/94658d91-7274-45ad-99ec-c2770fb1273b" />
-
-
+<img width="2591" height="2219" alt="Infra drawio (3)" src="https://github.com/user-attachments/assets/f4f3ea2f-8fe7-4afc-89ac-341bbe6cd27e" />
 
 ---
 
