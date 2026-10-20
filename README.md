@@ -13,7 +13,7 @@
 
 This project is a **reference implementation** of a distributed server infrastructure designed to demonstrate **DevOps**, **SysAdmin**, and **Infrastructure Engineering** skills and understanding.
 
-> 🎯 **Goal:** Build a resilient, self-healing, and observable infrastructure stack using only open-source tools.
+> 🎯 **Goal:** Build a resilient, self-healing, and observable infrastructure stack using only open-source / free tools.
 
 <div align="center">
 
