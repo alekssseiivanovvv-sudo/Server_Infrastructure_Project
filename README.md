@@ -11,11 +11,34 @@
 
 ## 📖 Overview
 
-This project is a **reference implementation** of a distributed server infrastructure designed to demonstrate **DevOps**, **SysAdmin**, and **Infrastructure Engineering** skills and understanding.
+This project is a reference implementation of a distributed, highly available IT infrastructure designed to demonstrate practical DevOps, SysAdmin, and Infrastructure Engineering skills.
 
-> 🎯 **Goal:** Build a resilient, self-healing, and observable infrastructure stack using only open-source / free tools.
+The infrastructure models a hybrid environment consisting of two geographically separated office branches and a cloud data center. Each branch contains an equivalent set of services, while the cloud segment provides shared infrastructure, routing, load balancing, monitoring, and quorum components.
 
-<div align="center">
+> 🎯 **Goal:** Build a resilient, observable, and partially self-healing infrastructure stack using open-source and free technologies.
+
+
+The architecture is designed around the following principles:
+
+1. **High availability**  
+   Both branches are capable of serving user requests. Traffic is distributed between them to improve availability, throughput, and response times.
+
+2. **Fault tolerance**  
+   The web service is designed to remain operational if one branch or selected cloud components become unavailable.
+
+3. **Resilience**  
+   Infrastructure and services are deployed and configured using Infrastructure as Code, allowing failed components to be recreated and restored consistently.
+
+4. **Observability**  
+   Infrastructure health, system metrics, logs, and service availability are monitored through a centralized monitoring stack.
+
+5. **Security**  
+   Administrative access is restricted through VPN-based connectivity, controlled firewall rules, SSH key authentication, TLS certificates, and dedicated service accounts.
+
+6. **Automation**  
+   Ansible and Terraform are used to automate infrastructure provisioning, system configuration, service deployment, and recovery operations.
+
+
 
 ## Diagram
 </div>
@@ -29,9 +52,9 @@ This project is a **reference implementation** of a distributed server infrastru
 ## Stack
 
 [![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://www.linux.org/)
-[![KVM](https://img.shields.io/badge/KVM-CC0000?style=for-the-badge&logo=linux&logoColor=white)](https://www.linux-kvm.org/)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com/)
 [![Alpine Linux](https://img.shields.io/badge/Alpine_Linux-0D597F?style=for-the-badge&logo=alpinelinux&logoColor=white)](https://alpinelinux.org/)
+[![KVM](https://img.shields.io/badge/KVM-CC0000?style=for-the-badge&logo=linux&logoColor=white)](https://www.linux-kvm.org/)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Ansible](https://img.shields.io/badge/Ansible-EE0000?style=for-the-badge&logo=ansible&logoColor=white)](https://www.ansible.com/)
 [![Terraform](https://img.shields.io/badge/Terraform-7B42BC?style=for-the-badge&logo=terraform&logoColor=white)](https://www.terraform.io/)
