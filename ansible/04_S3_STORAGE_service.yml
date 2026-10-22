@@ -9,3 +9,15 @@
 
   roles:
     - garage
+
+- name: Configure separate Garage and backup RAID arrays
+  hosts: s3_servers
+  become: true
+  gather_facts: true
+  serial: 1
+
+  vars_files:
+    - group_vars/group/all/vault.yml
+
+  roles:
+    - storage_raid
