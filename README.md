@@ -24,7 +24,7 @@ The architecture is designed around the following principles:
    Both branches are capable of serving user requests. Traffic is distributed between them to improve availability, throughput, and response times.
 
 2. **Fault tolerance**  
-   The web service is designed to remain operational if one branch or selected cloud components become unavailable.
+   The web service is designed to remain operational if one branch or cloud components become unavailable.
 
 3. **Resilience**  
    Infrastructure and services are deployed and configured using Infrastructure as Code, allowing failed components to be recreated and restored consistently.
