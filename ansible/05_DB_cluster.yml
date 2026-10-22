@@ -230,17 +230,13 @@
         state: restarted
         daemon_reload: true
 
-- name: Create application database on current Patroni primary
+- name: Initialize application database on current Patroni primary
   hosts: patroni_servers
   become: true
   gather_facts: false
 
   vars_files:
     - group_vars/group/all/vault.yml
-
-  vars:
-    postgres_app_database: shopdb
-    postgres_app_user: appuser
 
   tasks:
     - name: Read current primary status
@@ -260,80 +256,10 @@
           - groups['patroni_servers'] | map('extract', hostvars, 'is_postgres_primary') | select('equalto', true) | list | length == 1
       run_once: true
 
-    - name: Create or update application database user on primary
-      ansible.builtin.shell: |
-        set -eu
-        sudo -u postgres psql -h /var/run/postgresql -U postgres -v ON_ERROR_STOP=1 \
-          -v app_user={{ postgres_app_user | quote }} \
-          -v app_password={{ vault_postgres_app_password | quote }} <<'SQL'
-        SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'app_user', :'app_password')
-        WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'app_user') \gexec
-
-        SELECT format('ALTER ROLE %I WITH LOGIN PASSWORD %L', :'app_user', :'app_password') \gexec
-        SQL
+    - name: Copy and apply application database SQL on primary
+      ansible.builtin.include_role:
+        name: project_database
       when: is_postgres_primary
-      no_log: true
-      changed_when: false
-
-    - name: Create application database on primary
-      ansible.builtin.shell: |
-        set -eu
-        sudo -u postgres psql -h /var/run/postgresql -U postgres -v ON_ERROR_STOP=1 \
-          -v db_name={{ postgres_app_database | quote }} \
-          -v app_user={{ postgres_app_user | quote }} <<'SQL'
-        SELECT format('CREATE DATABASE %I OWNER %I', :'db_name', :'app_user')
-        WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'db_name') \gexec
-
-        SELECT format('ALTER DATABASE %I OWNER TO %I', :'db_name', :'app_user') \gexec
-        SELECT format('GRANT CONNECT ON DATABASE %I TO %I', :'db_name', :'app_user') \gexec
-        SQL
-      when: is_postgres_primary
-      no_log: true
-      changed_when: false
-
-    - name: Configure application table and permissions on primary
-      ansible.builtin.shell: |
-        set -eu
-        sudo -u postgres psql -h /var/run/postgresql -U postgres -d "{{ postgres_app_database }}" -v ON_ERROR_STOP=1 \
-          -v app_user={{ postgres_app_user | quote }} <<'SQL'
-        CREATE TABLE IF NOT EXISTS public.products (
-          id SERIAL PRIMARY KEY,
-          name VARCHAR(255) NOT NULL,
-          price NUMERIC(10, 2) NOT NULL,
-          stock INTEGER NOT NULL DEFAULT 0,
-          image_key VARCHAR(512)
-        );
-
-        SELECT format('ALTER TABLE public.products OWNER TO %I', :'app_user') \gexec
-        SELECT format('ALTER SEQUENCE IF EXISTS public.products_id_seq OWNER TO %I', :'app_user') \gexec
-
-        SELECT format('GRANT USAGE, CREATE ON SCHEMA public TO %I', :'app_user') \gexec
-        SELECT format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.products TO %I', :'app_user') \gexec
-        SELECT format('GRANT USAGE, SELECT, UPDATE ON SEQUENCE public.products_id_seq TO %I', :'app_user') \gexec
-
-        SELECT format('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO %I', :'app_user') \gexec
-        SELECT format('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO %I', :'app_user') \gexec
-        SQL
-      when: is_postgres_primary
-      no_log: true
-      changed_when: false
-
-    - name: Create dedicated read-only backup role on primary
-      ansible.builtin.shell: |
-        set -eu
-        sudo -u postgres psql -h /var/run/postgresql -v ON_ERROR_STOP=1 \
-          -v role={{ postgres_backup_user | quote }} \
-          -v password={{ vault_postgres_backup_password | quote }} \
-          -v db={{ postgres_app_database | quote }} <<'SQL'
-        SELECT format('CREATE ROLE %I LOGIN', :'role')
-        WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'role') \gexec
-        SELECT format('ALTER ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD %L', :'role', :'password') \gexec
-        SELECT format('GRANT pg_read_all_data TO %I', :'role') \gexec
-        SELECT format('GRANT CONNECT ON DATABASE %I TO %I', :'db', :'role') \gexec
-        SQL
-      when: is_postgres_primary
-      no_log: true
-      changed_when: false
 
     - name: Show Patroni cluster status
       ansible.builtin.command:

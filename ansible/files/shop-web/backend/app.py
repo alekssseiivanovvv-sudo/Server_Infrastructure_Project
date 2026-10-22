@@ -44,32 +44,6 @@ def get_s3_client():
         region_name=GARAGE_REGION
     )
 
-# Инициализация БД (ленивая, т.к. gunicorn не выполняет __main__)
-_db_initialized = False
-
-@app.before_request
-def _ensure_db():
-    global _db_initialized
-    if not _db_initialized:
-        try:
-            conn = get_db()
-            cur = conn.cursor()
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS products (
-                    id SERIAL PRIMARY KEY,
-                    name VARCHAR(255) NOT NULL,
-                    price NUMERIC(10, 2) NOT NULL,
-                    stock INTEGER NOT NULL DEFAULT 0,
-                    image_key VARCHAR(512)
-                );
-            """)
-            conn.commit()
-            cur.close()
-            conn.close()
-            _db_initialized = True
-        except Exception:
-            pass
-
 @app.route('/api/products', methods=['GET'])
 def list_products():
     conn = get_db()

@@ -1,0 +1,81 @@
+---
+- name: Check application database variables
+  ansible.builtin.assert:
+    that:
+      - postgres_app_database | default('') | length > 0
+      - postgres_app_user | default('') | length > 0
+      - postgres_backup_user | default('') | length > 0
+      - vault_postgres_app_password | default('') | length > 0
+      - vault_postgres_backup_password | default('') | length > 0
+  no_log: true
+
+- name: Create application database SQL directory
+  ansible.builtin.file:
+    path: "{{ project_database_remote_dir }}"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0750'
+
+- name: Copy application database SQL from repository
+  ansible.builtin.copy:
+    src: "{{ project_database_sql_file }}"
+    dest: "{{ project_database_remote_dir }}/{{ project_database_sql_file }}"
+    owner: postgres
+    group: postgres
+    mode: '0640'
+  register: project_database_sql_copy
+
+- name: Create or update application database user
+  ansible.builtin.shell: |
+    set -eu
+    sudo -u postgres psql -h /var/run/postgresql -U postgres -v ON_ERROR_STOP=1 \
+      -v app_user={{ postgres_app_user | quote }} \
+      -v app_password={{ vault_postgres_app_password | quote }} <<'SQL'
+    SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'app_user', :'app_password')
+    WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'app_user') \gexec
+
+    SELECT format('ALTER ROLE %I WITH LOGIN PASSWORD %L', :'app_user', :'app_password') \gexec
+    SQL
+  no_log: true
+  changed_when: false
+
+- name: Apply application database SQL file
+  ansible.builtin.command:
+    argv:
+      - sudo
+      - -u
+      - postgres
+      - psql
+      - -h
+      - /var/run/postgresql
+      - -U
+      - postgres
+      - -d
+      - postgres
+      - -v
+      - ON_ERROR_STOP=1
+      - -v
+      - "db_name={{ postgres_app_database }}"
+      - -v
+      - "app_user={{ postgres_app_user }}"
+      - -f
+      - "{{ project_database_remote_dir }}/{{ project_database_sql_file }}"
+  register: project_database_sql_result
+  changed_when: project_database_sql_copy.changed
+
+- name: Create dedicated read-only backup role
+  ansible.builtin.shell: |
+    set -eu
+    sudo -u postgres psql -h /var/run/postgresql -v ON_ERROR_STOP=1 \
+      -v role={{ postgres_backup_user | quote }} \
+      -v password={{ vault_postgres_backup_password | quote }} \
+      -v db={{ postgres_app_database | quote }} <<'SQL'
+    SELECT format('CREATE ROLE %I LOGIN', :'role')
+    WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'role') \gexec
+    SELECT format('ALTER ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD %L', :'role', :'password') \gexec
+    SELECT format('GRANT pg_read_all_data TO %I', :'role') \gexec
+    SELECT format('GRANT CONNECT ON DATABASE %I TO %I', :'db', :'role') \gexec
+    SQL
+  no_log: true
+  changed_when: false

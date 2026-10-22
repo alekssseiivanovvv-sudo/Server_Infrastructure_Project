@@ -1,0 +1,4 @@
+---
+project_database_remote_dir: /opt/project/database
+project_database_sql_file: shopdb.sql
+

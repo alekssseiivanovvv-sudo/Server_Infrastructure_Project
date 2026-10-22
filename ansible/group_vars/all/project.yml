@@ -6,6 +6,8 @@ postgres_app_database: shopdb
 postgres_app_user: appuser
 postgres_replication_user: replicator
 postgres_backup_user: backup_reader
+project_database_remote_dir: /opt/project/database
+project_database_sql_file: shopdb.sql
 etcd_data_dir: /var/lib/etcd-project
 etcd_cluster_token: project-postgres-etcd3-v1
 # Set once to the installed major on your chosen Ubuntu image; use same on DB + storage.
