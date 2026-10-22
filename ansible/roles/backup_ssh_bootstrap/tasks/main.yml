@@ -151,7 +151,7 @@
   when: backup_ssh_mode == "storage"
 
 - name: Require storage mount before creating repositories
-  ansible.builtin.command: mountpoint -q /srv/storage
+  ansible.builtin.command: mountpoint -q /srv/backup
   changed_when: false
   when: backup_ssh_mode == "storage"
 
@@ -197,7 +197,7 @@
     content: |
       #!/bin/sh
       set -eu
-      /usr/bin/mountpoint -q /srv/storage || exit 1
+      /usr/bin/mountpoint -q /srv/backup || exit 1
       exec /usr/lib/openssh/sftp-server
   when: backup_ssh_mode == "storage"
 

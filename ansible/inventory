@@ -122,7 +122,7 @@ automation_nodes
 etcd_servers
 
 [backup_storage_servers:children]
-fs_servers
+s3_servers
 
 [ubuntu_servers:children]
 db_servers

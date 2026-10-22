@@ -23,11 +23,10 @@ module "servers_host_1" {
   cloud_init_user_data = templatefile(
     "${path.module}/cloud-init/server-${each.value.base_image}-user-data.yaml.tftpl",
     {
-      hostname               = replace(each.value.name, "_", "-")
-      ssh_public_key         = local.ansible_admin_public_key
-      ssh_port               = var.ssh_port
-      swap_size_mb           = each.value.swap_size_mb
-      configure_storage_raid = each.value.configure_storage_raid
+      hostname       = replace(each.value.name, "_", "-")
+      ssh_public_key = local.ansible_admin_public_key
+      ssh_port       = var.ssh_port
+      swap_size_mb   = each.value.swap_size_mb
     }
   )
 
@@ -80,11 +79,10 @@ module "servers_host_2" {
   cloud_init_user_data = templatefile(
     "${path.module}/cloud-init/server-${each.value.base_image}-user-data.yaml.tftpl",
     {
-      hostname               = replace(each.value.name, "_", "-")
-      ssh_public_key         = local.ansible_admin_public_key
-      ssh_port               = var.ssh_port
-      swap_size_mb           = each.value.swap_size_mb
-      configure_storage_raid = each.value.configure_storage_raid
+      hostname       = replace(each.value.name, "_", "-")
+      ssh_public_key = local.ansible_admin_public_key
+      ssh_port       = var.ssh_port
+      swap_size_mb   = each.value.swap_size_mb
     }
   )
 

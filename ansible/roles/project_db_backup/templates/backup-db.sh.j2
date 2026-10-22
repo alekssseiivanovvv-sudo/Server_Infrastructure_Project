@@ -2,10 +2,10 @@
 set -Eeuo pipefail
 umask 077
 repo={{ (backup_repo_root ~ '/shopdb') | quote }}
-stage=/srv/storage/db-staging/shopdb
+stage=/srv/backup/db-staging/shopdb
 status=/var/lib/project-backup-status/shopdb
-mountpoint -q /srv/storage || { echo 'Backup RAID is not mounted' >&2; exit 1; }
-exec 9>/srv/storage/db-staging/.shopdb.lock
+mountpoint -q /srv/backup || { echo 'Backup RAID is not mounted' >&2; exit 1; }
+exec 9>/srv/backup/db-staging/.shopdb.lock
 flock -n 9 || { echo 'Another database backup is running' >&2; exit 1; }
 export PGCONNECT_TIMEOUT=10
 export PGPASSWORD RESTIC_PASSWORD

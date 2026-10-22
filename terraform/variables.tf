@@ -68,14 +68,13 @@ variable "vm-servers" {
     extra_drives = optional(list(object({
       name   = string # The name of the extra drive
       size   = number # The size of each extra drive (in GB)
-      serial = string # Stable guest-visible serial, for example data1
+      serial = string # Stable guest-visible serial, for example garage1
     })), [])
     base_image             = string # The image to use for the VM
     ip_address             = string # Static LAN address without a prefix
     gateway                = string # Site router LAN address
     netmask                = optional(string, "255.255.255.224")
     swap_size_mb           = optional(number, 2048)
-    configure_storage_raid = optional(bool, false)
     networks = object({
       wan = optional(object({ bridge = string, mac = string })) # In this project by wan it means default KVM switch which allows machine directly to the internet without using virtual router
       lan = object({ bridge = string, mac = string })

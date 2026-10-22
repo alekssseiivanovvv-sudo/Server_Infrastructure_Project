@@ -17,7 +17,7 @@ garage_consistency_mode: consistent
 garage_db_engine: lmdb
 garage_metadata_snapshot_interval: 6h
 garage_compression_level: 1
-garage_capacity: 14G
+garage_capacity: 12G
 garage_coordinator: cloud_s3
 
 garage_rpc_port: 3901

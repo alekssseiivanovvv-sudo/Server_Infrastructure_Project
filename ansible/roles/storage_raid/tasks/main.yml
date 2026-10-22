@@ -1,0 +1,31 @@
+---
+- name: Require Ubuntu storage nodes with systemd
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.distribution == 'Ubuntu'
+      - ansible_service_mgr == 'systemd'
+    fail_msg: 'The storage RAID role requires an Ubuntu storage node with systemd.'
+
+- name: Install RAID and filesystem packages
+  ansible.builtin.apt:
+    name:
+      - mdadm
+      - e2fsprogs
+      - util-linux
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install the storage RAID configuration script
+  ansible.builtin.copy:
+    src: configure-storage-raid.sh
+    dest: /usr/local/sbin/project-storage-raid-setup
+    owner: root
+    group: root
+    mode: '0755'
+    validate: /bin/bash -n %s
+
+- name: Configure and verify the storage RAID arrays
+  ansible.builtin.command: /usr/local/sbin/project-storage-raid-setup
+  register: storage_raid_script
+  changed_when: "'CHANGED=1' in storage_raid_script.stdout"

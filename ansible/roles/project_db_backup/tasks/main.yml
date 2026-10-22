@@ -16,7 +16,7 @@
     cache_valid_time: 3600
 
 - name: Verify backup mount before creating files
-  ansible.builtin.command: mountpoint -q /srv/storage
+  ansible.builtin.command: mountpoint -q /srv/backup
   changed_when: false
 
 - name: Ensure backup user exists independently of SSH bootstrap
@@ -35,8 +35,8 @@
   loop:
     - "{{ backup_repo_root }}"
     - "{{ backup_repo_root }}/shopdb"
-    - /srv/storage/db-staging
-    - /srv/storage/db-staging/shopdb
+    - /srv/backup/db-staging
+    - /srv/backup/db-staging/shopdb
     - /var/lib/project-backup-status
 
 - name: Create private configuration directory
@@ -104,14 +104,14 @@
       Description=Project shopdb backup from current primary
       Wants=network-online.target
       After=network-online.target
-      RequiresMountsFor=/srv/storage
+      RequiresMountsFor=/srv/backup
       [Service]
       Type=oneshot
       User={{ backup_restic_user }}
       Group={{ backup_restic_user }}
       UMask=0077
       EnvironmentFile=/etc/project-backup/db.env
-      ExecStartPre=/usr/bin/mountpoint -q /srv/storage
+      ExecStartPre=/usr/bin/mountpoint -q /srv/backup
       ExecStart=/usr/local/sbin/project-db-backup
       TimeoutStartSec=2h
       Nice=10

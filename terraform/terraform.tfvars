@@ -181,31 +181,30 @@ vm-servers = {
 
     extra_drives = [
       {
-        name   = "west-s3-raid-1"
+        name   = "east-s3-raid-1"
         size   = 15
-        serial = "data1"
+        serial = "garage1"
       },
       {
-        name   = "west-s3-raid-2"
+        name   = "east-s3-raid-2"
         size   = 15
-        serial = "data2"
+        serial = "garage2"
       },
       {
-        name   = "west-backup-raid-1"
+        name   = "east-backup-raid-1"
         size   = 15
-        serial = "data1"
+        serial = "backup1"
       },
       {
-        name   = "west-backup-raid-2"
+        name   = "east-backup-raid-2"
         size   = 15
-        serial = "data2"
+        serial = "backup2"
       }
     ]
 
-    base_image             = "ubuntu"
-    ip_address             = "192.168.72.5"
-    gateway                = "192.168.72.1"
-    configure_storage_raid = true
+    base_image = "ubuntu"
+    ip_address = "192.168.72.5"
+    gateway    = "192.168.72.1"
 
     networks = {
       lan = {
@@ -232,29 +231,28 @@ vm-servers = {
       {
         name   = "west-s3-raid-1"
         size   = 15
-        serial = "data1"
+        serial = "garage1"
       },
       {
         name   = "west-s3-raid-2"
         size   = 15
-        serial = "data2"
+        serial = "garage2"
       },
       {
         name   = "west-backup-raid-1"
         size   = 15
-        serial = "data1"
+        serial = "backup1"
       },
       {
         name   = "west-backup-raid-2"
         size   = 15
-        serial = "data2"
+        serial = "backup2"
       }
     ]
 
-    base_image             = "ubuntu"
-    ip_address             = "192.168.73.5"
-    gateway                = "192.168.73.1"
-    configure_storage_raid = true
+    base_image = "ubuntu"
+    ip_address = "192.168.73.5"
+    gateway    = "192.168.73.1"
 
     networks = {
       lan = {
@@ -281,29 +279,28 @@ vm-servers = {
       {
         name   = "cloud-s3-raid-1"
         size   = 15
-        serial = "data1"
+        serial = "garage1"
       },
       {
         name   = "cloud-s3-raid-2"
         size   = 15
-        serial = "data2"
+        serial = "garage2"
       },
       {
         name   = "cloud-backup-raid-1"
         size   = 15
-        serial = "data1"
+        serial = "backup1"
       },
       {
         name   = "cloud-backup-raid-2"
         size   = 15
-        serial = "data2"
+        serial = "backup2"
       }
     ]
 
-    base_image             = "ubuntu"
-    ip_address             = "192.168.74.6"
-    gateway                = "192.168.74.1"
-    configure_storage_raid = true
+    base_image = "ubuntu"
+    ip_address = "192.168.74.6"
+    gateway    = "192.168.74.1"
 
     networks = {
       lan = {
