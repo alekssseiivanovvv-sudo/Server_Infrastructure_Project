@@ -181,12 +181,22 @@ vm-servers = {
 
     extra_drives = [
       {
-        name   = "east-storage-raid-1"
+        name   = "west-s3-raid-1"
         size   = 15
         serial = "data1"
       },
       {
-        name   = "east-storage-raid-2"
+        name   = "west-s3-raid-2"
+        size   = 15
+        serial = "data2"
+      },
+      {
+        name   = "west-backup-raid-1"
+        size   = 15
+        serial = "data1"
+      },
+      {
+        name   = "west-backup-raid-2"
         size   = 15
         serial = "data2"
       }
@@ -220,12 +230,22 @@ vm-servers = {
 
     extra_drives = [
       {
-        name   = "west-storage-raid-1"
+        name   = "west-s3-raid-1"
         size   = 15
         serial = "data1"
       },
       {
-        name   = "west-storage-raid-2"
+        name   = "west-s3-raid-2"
+        size   = 15
+        serial = "data2"
+      },
+      {
+        name   = "west-backup-raid-1"
+        size   = 15
+        serial = "data1"
+      },
+      {
+        name   = "west-backup-raid-2"
         size   = 15
         serial = "data2"
       }
@@ -265,6 +285,16 @@ vm-servers = {
       },
       {
         name   = "cloud-s3-raid-2"
+        size   = 15
+        serial = "data2"
+      },
+      {
+        name   = "cloud-backup-raid-1"
+        size   = 15
+        serial = "data1"
+      },
+      {
+        name   = "cloud-backup-raid-2"
         size   = 15
         serial = "data2"
       }
