@@ -208,8 +208,9 @@
         label: "[{{ known_host_name }}]:{{ known_host_port }}"
 
 
-# Human administrators use SSH keys only. system_admin is the only account
-# with a working local password and is deliberately excluded from SSH.
+# Human administrators authenticate through SSH keys only.
+# Their local passwords are used only for sudo.
+# system_admin has console access only and is deliberately excluded from SSH.
 - name: Create administrators on all infrastructure machines
   hosts: infrastructure
   become: true
@@ -249,6 +250,33 @@
           }}
       no_log: true
 
+    - name: Select human administrators from Vault
+      ansible.builtin.set_fact:
+        selected_human_admins: >-
+          {{
+            vault_admin_users
+            | selectattr('name', 'in', human_admin_users)
+            | list
+          }}
+      no_log: true
+
+    - name: Check human administrator configuration
+      ansible.builtin.assert:
+        that:
+          - selected_human_admins | length == human_admin_users | length
+        fail_msg: >-
+          Vault must contain admin_aleksei and admin_ilja accounts.
+
+    - name: Check human administrator password hashes
+      ansible.builtin.assert:
+        that:
+          - item.password_hash is defined
+          - item.password_hash | length > 0
+        fail_msg: >-
+          Human administrator in Vault must contain password_hash.
+      loop: "{{ selected_human_admins }}"
+      no_log: true
+
     - name: Check console administrator configuration
       ansible.builtin.assert:
         that:
@@ -270,22 +298,18 @@
         fail_msg: >-
           {{ console_admin_user }} in Vault must contain password_hash.
 
-    - name: Create key-only human administrators
+    - name: Create human administrators with local sudo passwords
       ansible.builtin.user:
-        name: "{{ item }}"
-        password: >-
-          {{
-            alpine_key_only_password_hash
-            if ansible_facts.distribution == 'Alpine'
-            else '!'
-          }}
+        name: "{{ item.name }}"
+        password: "{{ item.password_hash }}"
         update_password: always
         shell: "{{ '/bin/ash' if ansible_facts.distribution == 'Alpine' else '/bin/bash' }}"
         groups: "{{ ['wheel'] if ansible_facts.distribution == 'Alpine' else ['sudo'] }}"
         append: true
         create_home: true
         state: present
-      loop: "{{ human_admin_users }}"
+      loop: "{{ selected_human_admins }}"
+      no_log: true
 
     - name: Create console-only system administrator
       ansible.builtin.user:
