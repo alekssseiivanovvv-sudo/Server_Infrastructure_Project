@@ -1,4 +1,4 @@
-# ⚙️ Distributed Server Infrastructure Project
+# ⚙️ Distributed Automated Server Infrastructure Project
 
  A distributed infrastructure project built entirely with Infrastructure as Code & Open Source solutions.
 
