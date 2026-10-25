@@ -16,8 +16,7 @@ and a cloud segment. Terraform provisions networks and virtual machines, while
 Ansible configures routing, security, databases, storage, web services,
 monitoring, and backups.
 
-> Built as an Application Servers project for College and portfolio project demonstrating practical skills
-> Systems Administration, DevOps, Computer Networking and Security.
+> Built as a college application servers project and portfolio project demonstrating practical skills in systems administration, DevOps, computer networking, and cybersecurity.
 
 ## Diagram
 </div>
