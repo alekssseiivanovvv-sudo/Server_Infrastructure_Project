@@ -13,8 +13,6 @@ The procedure was tested on both storage nodes. Commands that configure the oper
 - **Isolation:** all backup operations run as the non-login system account `restic_sysuser`.
 - **Scheduling:** the PostgreSQL backup runs daily at 02:10 UTC through a systemd timer.
 
-> The screenshots use the same numbers and filenames as the edited Word document. Sensitive access keys, secret keys, and passwords remain redacted.
-
 ## 1 Create a read-only Garage key
 
 Create a dedicated Garage key for backups. The key does not need permission to create buckets; it only needs read access to the two existing data buckets.
