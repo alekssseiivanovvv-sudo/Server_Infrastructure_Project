@@ -311,6 +311,17 @@
       loop: "{{ selected_human_admins }}"
       no_log: true
 
+    - name: Allow Alpine administrators to use sudo
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/90-wheel
+        owner: root
+        group: root
+        mode: "0440"
+        content: |
+          %wheel ALL=(ALL:ALL) ALL
+        validate: /usr/sbin/visudo -cf %s
+      when: ansible_facts.distribution == 'Alpine'
+
     - name: Create console-only system administrator
       ansible.builtin.user:
         name: "{{ console_admin_user }}"
