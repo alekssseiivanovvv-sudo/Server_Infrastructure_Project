@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Garage S3 backup timer
+
+[Timer]
+OnCalendar={{ backup_s3_calendar }}
+Persistent=true
+RandomizedDelaySec=5m
+Unit=project-s3-backup.service
+
+[Install]
+WantedBy=timers.target

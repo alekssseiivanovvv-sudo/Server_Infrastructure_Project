@@ -1,0 +1,21 @@
+[Unit]
+Description=Apply Restic retention and verify backup repositories
+RequiresMountsFor=/srv/backup
+
+[Service]
+Type=oneshot
+User={{ backup_restic_user }}
+Group={{ backup_restic_user }}
+UMask=0077
+Environment=RESTIC_PASSWORD_FILE={{ backup_restic_password_file }}
+Environment=XDG_CACHE_HOME={{ backup_cache_dir }}
+ExecStartPre=/usr/bin/mountpoint -q /srv/backup
+ExecStart=/usr/local/sbin/project-backup-maintenance
+TimeoutStartSec=4h
+Nice=15
+IOSchedulingClass=idle
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/backup {{ backup_work_dir }}

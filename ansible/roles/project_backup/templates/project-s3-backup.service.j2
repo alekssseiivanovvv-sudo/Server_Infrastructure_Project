@@ -1,0 +1,22 @@
+[Unit]
+Description=Backup Garage S3 buckets to Restic
+Wants=network-online.target
+After=network-online.target garage.service
+RequiresMountsFor=/srv/backup
+
+[Service]
+Type=oneshot
+User={{ backup_restic_user }}
+Group={{ backup_restic_user }}
+UMask=0077
+Environment=RESTIC_PASSWORD_FILE={{ backup_restic_password_file }}
+Environment=XDG_CACHE_HOME={{ backup_cache_dir }}
+ExecStartPre=/usr/bin/mountpoint -q /srv/backup
+ExecStart=/usr/local/sbin/project-s3-backup
+TimeoutStartSec=2h
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/backup {{ backup_work_dir }}

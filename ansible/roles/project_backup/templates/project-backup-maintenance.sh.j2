@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+umask 077
+
+readonly BACKUP_MOUNT=/srv/backup
+readonly IMAGES_REPOSITORY={{ backup_images_repository | quote }}
+readonly LOGS_REPOSITORY={{ backup_logs_repository | quote }}
+readonly DATABASE_REPOSITORY={{ backup_database_repository | quote }}
+readonly LOCK_FILE={{ backup_global_lock_file | quote }}
+readonly STATUS_DIRECTORY={{ backup_status_dir | quote }}
+
+export RESTIC_PASSWORD_FILE={{ backup_restic_password_file | quote }}
+export XDG_CACHE_HOME={{ backup_cache_dir | quote }}
+
+log() {
+  printf '[backup-maintenance] %s\n' "$*"
+}
+
+fail() {
+  log "ERROR: $*"
+  exit 1
+}
+
+cleanup() {
+  local exit_code=$?
+
+  trap - EXIT
+
+  if [[ "$exit_code" -ne 0 ]]; then
+    date -u +'%Y-%m-%dT%H:%M:%SZ' >"${STATUS_DIRECTORY}/maintenance.last-failure"
+    log 'Maintenance failed'
+  fi
+
+  exit "$exit_code"
+}
+
+maintain_repository() {
+  local repository=$1
+  shift
+
+  log "Applying retention to $repository"
+  restic --repo "$repository" forget --group-by host,tags "$@" --prune
+
+  log "Checking $repository"
+  restic --repo "$repository" check
+}
+
+main() {
+  mountpoint -q "$BACKUP_MOUNT" || fail "$BACKUP_MOUNT is not mounted"
+  [[ -r "$RESTIC_PASSWORD_FILE" ]] || fail 'Restic password file is not readable'
+
+  exec 9>"$LOCK_FILE"
+  flock -n 9 || fail 'Another backup or maintenance job is already running'
+
+  trap cleanup EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+
+  maintain_repository "$IMAGES_REPOSITORY" --keep-daily 7 --keep-weekly 4 --keep-monthly 6
+  maintain_repository "$LOGS_REPOSITORY" --keep-daily 7 --keep-weekly 4
+  maintain_repository "$DATABASE_REPOSITORY" --keep-daily 14 --keep-weekly 8 --keep-monthly 6
+
+  date -u +'%Y-%m-%dT%H:%M:%SZ' >"${STATUS_DIRECTORY}/maintenance.last-success"
+  rm -f "${STATUS_DIRECTORY}/maintenance.last-failure"
+
+  log 'Maintenance completed successfully'
+}
+
+main "$@"

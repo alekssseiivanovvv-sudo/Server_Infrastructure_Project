@@ -1,0 +1,3 @@
+{% for host in groups['patroni_servers'] %}
+{{ hostvars[host].ansible_host }}:5432:{{ postgres_app_database }}:{{ postgres_backup_user }}:{{ vault_postgres_backup_password | replace('\\', '\\\\') | replace(':', '\\:') }}
+{% endfor %}

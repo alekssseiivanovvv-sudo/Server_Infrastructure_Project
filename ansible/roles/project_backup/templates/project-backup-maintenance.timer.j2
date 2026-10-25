@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekly Restic maintenance timer
+
+[Timer]
+OnCalendar={{ backup_maintenance_calendar }}
+Persistent=true
+RandomizedDelaySec=10m
+Unit=project-backup-maintenance.service
+
+[Install]
+WantedBy=timers.target

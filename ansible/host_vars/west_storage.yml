@@ -1,0 +1,4 @@
+---
+backup_db_calendar: "*-*-* 03:10:00 UTC"
+backup_s3_calendar: "*-*-* 04:10:00 UTC"
+backup_maintenance_calendar: "Sun *-*-* 06:10:00 UTC"

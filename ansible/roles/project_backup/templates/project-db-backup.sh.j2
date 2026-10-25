@@ -1,0 +1,202 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+umask 077
+
+readonly DATABASE={{ postgres_app_database | quote }}
+readonly DATABASE_USER={{ postgres_backup_user | quote }}
+readonly DATABASE_PORT=5432
+
+readonly -a DATABASE_HOSTS=(
+{% for host in groups['patroni_servers'] %}
+  {{ hostvars[host].ansible_host | quote }}
+{% endfor %}
+)
+
+readonly BACKUP_MOUNT=/srv/backup
+readonly RESTIC_REPOSITORY={{ backup_database_repository | quote }}
+readonly STAGING_DIRECTORY={{ (backup_staging_dir ~ '/postgresql-shopdb') | quote }}
+readonly TEMPORARY_DUMP="${STAGING_DIRECTORY}/shopdb.dump.part"
+readonly FINAL_DUMP="${STAGING_DIRECTORY}/shopdb.dump"
+readonly PRIMARY_FILE="${STAGING_DIRECTORY}/source-primary.txt"
+readonly DATE_FILE="${STAGING_DIRECTORY}/backup-created-utc.txt"
+readonly LOCK_FILE={{ backup_global_lock_file | quote }}
+readonly STATUS_DIRECTORY={{ backup_status_dir | quote }}
+
+export PGPASSFILE={{ backup_postgres_password_file | quote }}
+export RESTIC_PASSWORD_FILE={{ backup_restic_password_file | quote }}
+export XDG_CACHE_HOME={{ backup_cache_dir | quote }}
+export PGCONNECT_TIMEOUT=10
+
+log() {
+  printf '[db-backup] %s\n' "$*"
+}
+
+fail() {
+  log "ERROR: $*"
+  exit 1
+}
+
+cleanup() {
+  local exit_code=$?
+
+  trap - EXIT
+
+  rm -f "$TEMPORARY_DUMP"
+
+  if [[ "$exit_code" -ne 0 ]]; then
+    date -u +'%Y-%m-%dT%H:%M:%SZ' >"${STATUS_DIRECTORY}/database.last-failure"
+    log 'Backup failed'
+  fi
+
+  exit "$exit_code"
+}
+
+detect_primary() {
+  local database_host
+  local database_role
+  local primary_count=0
+
+  PRIMARY_DATABASE=''
+
+  for database_host in "${DATABASE_HOSTS[@]}"; do
+    database_role=$(psql \
+      --host="$database_host" \
+      --port="$DATABASE_PORT" \
+      --username="$DATABASE_USER" \
+      --dbname="$DATABASE" \
+      --no-password \
+      --tuples-only \
+      --no-align \
+      --command="SELECT CASE WHEN pg_is_in_recovery() THEN 'replica' ELSE 'primary' END;" || true)
+
+    case "$database_role" in
+      primary)
+        log "$database_host is Primary"
+        PRIMARY_DATABASE="$database_host"
+        primary_count=$((primary_count + 1))
+        ;;
+      replica)
+        log "$database_host is Replica"
+        ;;
+      *)
+        log "$database_host is unavailable"
+        ;;
+    esac
+  done
+
+  if [[ "$primary_count" -ne 1 ]]; then
+    log "Expected exactly one Primary, found $primary_count"
+    PRIMARY_DATABASE=''
+    return 1
+  fi
+}
+
+verify_primary_after_dump() {
+  local database_role
+
+  database_role=$(psql \
+    --host="$PRIMARY_DATABASE" \
+    --port="$DATABASE_PORT" \
+    --username="$DATABASE_USER" \
+    --dbname="$DATABASE" \
+    --no-password \
+    --tuples-only \
+    --no-align \
+    --command="SELECT CASE WHEN pg_is_in_recovery() THEN 'replica' ELSE 'primary' END;" || true)
+
+  [[ "$database_role" == primary ]]
+}
+
+main() {
+  local attempt
+  local dump_created=0
+
+  mountpoint -q "$BACKUP_MOUNT" || fail "$BACKUP_MOUNT is not mounted"
+  [[ -f "${RESTIC_REPOSITORY}/config" ]] || fail 'Restic repository is not initialized'
+  [[ -r "$PGPASSFILE" ]] || fail 'PostgreSQL password file is not readable'
+  [[ -r "$RESTIC_PASSWORD_FILE" ]] || fail 'Restic password file is not readable'
+
+  exec 9>"$LOCK_FILE"
+  flock -n 9 || fail 'Another backup or maintenance job is already running'
+
+  trap cleanup EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+
+  for attempt in 1 2 3; do
+    log "Backup attempt $attempt of 3"
+
+    if ! detect_primary; then
+      rm -f "$TEMPORARY_DUMP"
+
+      if [[ "$attempt" -lt 3 ]]; then
+        log 'Waiting 10 seconds before retry'
+        sleep 10
+      fi
+
+      continue
+    fi
+
+    rm -f "$TEMPORARY_DUMP"
+
+    if ! pg_dump \
+      --host="$PRIMARY_DATABASE" \
+      --port="$DATABASE_PORT" \
+      --username="$DATABASE_USER" \
+      --dbname="$DATABASE" \
+      --no-password \
+      --format=custom \
+      --file="$TEMPORARY_DUMP"; then
+      log "pg_dump failed on $PRIMARY_DATABASE"
+      rm -f "$TEMPORARY_DUMP"
+
+      if [[ "$attempt" -lt 3 ]]; then
+        log 'Waiting 10 seconds before retry'
+        sleep 10
+      fi
+
+      continue
+    fi
+
+    if ! verify_primary_after_dump; then
+      log "$PRIMARY_DATABASE is no longer Primary; discarding dump"
+      rm -f "$TEMPORARY_DUMP"
+
+      if [[ "$attempt" -lt 3 ]]; then
+        log 'Waiting 10 seconds before retry'
+        sleep 10
+      fi
+
+      continue
+    fi
+
+    pg_restore --list "$TEMPORARY_DUMP" >/dev/null || fail 'Created PostgreSQL dump is invalid'
+
+    dump_created=1
+    break
+  done
+
+  [[ "$dump_created" -eq 1 ]] || fail 'Database backup failed after 3 attempts'
+
+  mv -f "$TEMPORARY_DUMP" "$FINAL_DUMP"
+  printf '%s\n' "$PRIMARY_DATABASE" >"$PRIMARY_FILE"
+  date -u +'%Y-%m-%dT%H:%M:%SZ' >"$DATE_FILE"
+
+  log 'Saving PostgreSQL dump to Restic'
+
+  restic --repo "$RESTIC_REPOSITORY" backup \
+    "$FINAL_DUMP" \
+    "$PRIMARY_FILE" \
+    "$DATE_FILE" \
+    --host project-postgres \
+    --tag postgresql \
+    --tag shopdb
+
+  date -u +'%Y-%m-%dT%H:%M:%SZ' >"${STATUS_DIRECTORY}/database.last-success"
+  rm -f "${STATUS_DIRECTORY}/database.last-failure"
+
+  log 'Database backup completed successfully'
+}
+
+main "$@"

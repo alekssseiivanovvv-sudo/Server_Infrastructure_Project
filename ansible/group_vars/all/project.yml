@@ -15,7 +15,6 @@ postgres_major_version: '18'
 backup_restic_user: restic_sysuser
 backup_repo_root: /srv/backup/restic-repos
 backup_run_now: false
-backup_automation_home: /home/ansible_admin
 data_admin_ipv4: []
 data_extra_client_ipv4: []
 

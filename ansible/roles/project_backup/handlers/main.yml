@@ -1,0 +1,16 @@
+---
+- name: Restart backup timers
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    daemon_reload: true
+    enabled: true
+    state: restarted
+  loop:
+    - project-s3-backup.timer
+    - project-db-backup.timer
+    - project-backup-maintenance.timer
+
+- name: Reload SSH
+  ansible.builtin.systemd:
+    name: ssh
+    state: reloaded

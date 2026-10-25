@@ -1,0 +1,21 @@
+---
+backup_config_dir: /etc/project-backup
+backup_work_dir: /var/lib/project-backup
+backup_staging_dir: "{{ backup_work_dir }}/staging"
+backup_status_dir: "{{ backup_work_dir }}/status"
+backup_cache_dir: "{{ backup_work_dir }}/restic-cache"
+
+backup_images_bucket: product-images
+backup_logs_bucket: monitoring-logs
+backup_s3_remote_name: garage
+backup_s3_endpoint: http://127.0.0.1:3900
+backup_s3_region: garage
+
+backup_images_repository: "{{ backup_repo_root }}/s3-product-images"
+backup_logs_repository: "{{ backup_repo_root }}/s3-loki-logs"
+backup_database_repository: "{{ backup_repo_root }}/postgresql-shopdb"
+
+backup_global_lock_file: "{{ backup_work_dir }}/backup.lock"
+backup_restic_password_file: "{{ backup_config_dir }}/restic-password"
+backup_postgres_password_file: "{{ backup_config_dir }}/pgpass"
+backup_rclone_config_file: "{{ backup_config_dir }}/rclone.conf"

@@ -116,13 +116,9 @@ inet_dns_servers
 [linux_servers:vars]
 ansible_port="{{ vault_ssh_port }}"
 
-[backup_source_servers:children]
-s3_servers
-automation_nodes
-etcd_servers
-
-[backup_storage_servers:children]
-s3_servers
+[backup_storage_servers]
+east_storage
+west_storage
 
 [ubuntu_servers:children]
 db_servers

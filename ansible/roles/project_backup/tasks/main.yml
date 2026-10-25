@@ -1,0 +1,271 @@
+---
+- name: Validate backup hosts, schedules and credentials
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == 'Ubuntu'
+      - ansible_service_mgr == 'systemd'
+      - (groups['backup_storage_servers'] | sort) == (['east_storage', 'west_storage'] | sort)
+      - inventory_hostname in groups['s3_servers']
+      - backup_s3_calendar | default('') | length > 0
+      - backup_db_calendar | default('') | length > 0
+      - backup_maintenance_calendar | default('') | length > 0
+      - vault_restic_repository_password | default('') | length >= 16
+      - vault_postgres_backup_password | default('') | length > 0
+      - vault_garage_backup_access_key | default('') is match('^GK.+')
+      - vault_garage_backup_secret_key | default('') | length >= 32
+    fail_msg: >-
+      Backup requires exactly east_storage and west_storage, explicit schedules,
+      and the Restic, PostgreSQL and Garage backup credentials in Vault.
+  no_log: true
+
+- name: Install backup packages
+  ansible.builtin.apt:
+    name:
+      - restic
+      - rclone
+      - "postgresql-client-{{ postgres_major_version }}"
+      - util-linux
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Verify the dedicated backup RAID mount
+  ansible.builtin.command: mountpoint -q /srv/backup
+  changed_when: false
+
+- name: Create Restic system group
+  ansible.builtin.group:
+    name: "{{ backup_restic_user }}"
+    system: true
+    state: present
+
+- name: Create locked Restic service account
+  ansible.builtin.user:
+    name: "{{ backup_restic_user }}"
+    group: "{{ backup_restic_user }}"
+    home: /var/lib/restic
+    shell: /usr/sbin/nologin
+    system: true
+    create_home: true
+    password_lock: true
+    state: present
+
+- name: Create private backup configuration directory
+  ansible.builtin.file:
+    path: "{{ backup_config_dir }}"
+    state: directory
+    owner: root
+    group: "{{ backup_restic_user }}"
+    mode: '0750'
+
+- name: Create local backup working directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ backup_restic_user }}"
+    group: "{{ backup_restic_user }}"
+    mode: '0700'
+  loop:
+    - "{{ backup_work_dir }}"
+    - "{{ backup_staging_dir }}"
+    - "{{ backup_staging_dir }}/product-images"
+    - "{{ backup_staging_dir }}/loki-logs"
+    - "{{ backup_staging_dir }}/postgresql-shopdb"
+    - "{{ backup_status_dir }}"
+    - "{{ backup_cache_dir }}"
+
+- name: Create local Restic repository directories on the backup RAID
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ backup_restic_user }}"
+    group: "{{ backup_restic_user }}"
+    mode: '0700'
+  loop:
+    - "{{ backup_repo_root }}"
+    - "{{ backup_images_repository }}"
+    - "{{ backup_logs_repository }}"
+    - "{{ backup_database_repository }}"
+
+- name: Install Restic repository password
+  ansible.builtin.copy:
+    dest: "{{ backup_restic_password_file }}"
+    content: "{{ vault_restic_repository_password }}\n"
+    owner: "{{ backup_restic_user }}"
+    group: "{{ backup_restic_user }}"
+    mode: '0600'
+  no_log: true
+  diff: false
+
+- name: Install PostgreSQL password file
+  ansible.builtin.template:
+    src: pgpass.j2
+    dest: "{{ backup_postgres_password_file }}"
+    owner: "{{ backup_restic_user }}"
+    group: "{{ backup_restic_user }}"
+    mode: '0600'
+  no_log: true
+  diff: false
+
+- name: Install read-only Garage configuration for rclone
+  ansible.builtin.template:
+    src: rclone.conf.j2
+    dest: "{{ backup_rclone_config_file }}"
+    owner: "{{ backup_restic_user }}"
+    group: "{{ backup_restic_user }}"
+    mode: '0600'
+  no_log: true
+  diff: false
+
+- name: Inspect Restic repository configurations
+  ansible.builtin.stat:
+    path: "{{ item }}/config"
+  loop:
+    - "{{ backup_images_repository }}"
+    - "{{ backup_logs_repository }}"
+    - "{{ backup_database_repository }}"
+  register: backup_repository_configs
+
+- name: Initialize absent Restic repositories
+  ansible.builtin.command:
+    argv:
+      - restic
+      - --repo
+      - "{{ item.item }}"
+      - init
+  become_user: "{{ backup_restic_user }}"
+  environment:
+    RESTIC_PASSWORD_FILE: "{{ backup_restic_password_file }}"
+    XDG_CACHE_HOME: "{{ backup_cache_dir }}"
+  loop: "{{ backup_repository_configs.results }}"
+  when: not item.stat.exists
+  no_log: true
+
+- name: Verify access to every Restic repository
+  ansible.builtin.command:
+    argv:
+      - restic
+      - --repo
+      - "{{ item }}"
+      - snapshots
+      - --latest
+      - '1'
+  become_user: "{{ backup_restic_user }}"
+  environment:
+    RESTIC_PASSWORD_FILE: "{{ backup_restic_password_file }}"
+    XDG_CACHE_HOME: "{{ backup_cache_dir }}"
+  loop:
+    - "{{ backup_images_repository }}"
+    - "{{ backup_logs_repository }}"
+    - "{{ backup_database_repository }}"
+  changed_when: false
+  no_log: true
+
+- name: Install backup scripts
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - src: project-s3-backup.sh.j2
+      dest: /usr/local/sbin/project-s3-backup
+    - src: project-db-backup.sh.j2
+      dest: /usr/local/sbin/project-db-backup
+    - src: project-backup-maintenance.sh.j2
+      dest: /usr/local/sbin/project-backup-maintenance
+
+- name: Validate installed Bash scripts
+  ansible.builtin.command: "bash -n {{ item }}"
+  loop:
+    - /usr/local/sbin/project-s3-backup
+    - /usr/local/sbin/project-db-backup
+    - /usr/local/sbin/project-backup-maintenance
+  changed_when: false
+
+- name: Disable obsolete backup timers when present
+  ansible.builtin.command:
+    argv:
+      - systemctl
+      - disable
+      - --now
+      - "{{ item }}"
+  loop:
+    - project-files-backup.timer
+    - project-db-backup-east_db.timer
+    - project-db-backup-west_db.timer
+  register: obsolete_backup_timer_disable
+  changed_when: obsolete_backup_timer_disable.rc == 0
+  failed_when: false
+
+- name: Remove obsolete backup and SSH bootstrap files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/systemd/system/project-files-backup.service
+    - /etc/systemd/system/project-files-backup.timer
+    - /etc/systemd/system/project-db-backup-east_db.timer
+    - /etc/systemd/system/project-db-backup-west_db.timer
+    - /usr/local/sbin/project-files-backup
+    - /usr/local/sbin/project-backup-resume-s3
+    - /usr/local/sbin/project-backup-sftp
+    - /etc/project-backup/db.env
+    - /etc/project-backup/files.env
+  notify: Restart backup timers
+
+- name: Remove obsolete Restic SFTP SSH configuration
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config.d/95-project-backup.conf
+    state: absent
+  notify: Reload SSH
+
+- name: Install backup systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: '0644'
+  loop:
+    - project-s3-backup.service
+    - project-s3-backup.timer
+    - project-db-backup.service
+    - project-db-backup.timer
+    - project-backup-maintenance.service
+    - project-backup-maintenance.timer
+  notify: Restart backup timers
+
+- name: Enable and start backup timers
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    daemon_reload: true
+    enabled: true
+    state: started
+  loop:
+    - project-s3-backup.timer
+    - project-db-backup.timer
+    - project-backup-maintenance.timer
+
+- name: Apply changed unit files before optional first backups
+  ansible.builtin.meta: flush_handlers
+
+- name: Run requested first S3 backup
+  ansible.builtin.systemd:
+    name: project-s3-backup.service
+    state: started
+  when: backup_run_now | bool
+
+- name: Run requested first database backup
+  ansible.builtin.systemd:
+    name: project-db-backup.service
+    state: started
+  when: backup_run_now | bool
+
+- name: Report installed backup schedules
+  ansible.builtin.debug:
+    msg:
+      - "S3 backup: {{ backup_s3_calendar }}"
+      - "Database backup: {{ backup_db_calendar }}"
+      - "Restic maintenance: {{ backup_maintenance_calendar }}"
