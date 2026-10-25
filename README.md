@@ -11,43 +11,43 @@
 
 ## 📖 Overview
 
-This project is a reference implementation of a distributed, highly available IT infrastructure designed to demonstrate practical DevOps, SysAdmin, and Infrastructure Engineering skills.
+A production-inspired infrastructure lab distributed across two remote branches
+and a cloud segment. Terraform provisions networks and virtual machines, while
+Ansible configures routing, security, databases, storage, web services,
+monitoring, and backups.
 
-The infrastructure models a hybrid environment consisting of two geographically separated office branches and a cloud data center. Each branch contains an equivalent set of services, while the cloud segment provides shared infrastructure, routing, load balancing, monitoring, and quorum components.
-
-> 🎯 **Goal:** Build a resilient, observable, and partially self-healing infrastructure stack using open-source and free technologies.
-
-
-The architecture is designed around the following principles:
-
-1. **High availability**  
-   Both branches are capable of serving user requests. Traffic is distributed between them to improve availability, throughput, and response times.
-
-2. **Fault tolerance**  
-   The web service is designed to remain operational if one branch or cloud components become unavailable.
-
-3. **Resilience**  
-   Infrastructure and services are deployed and configured using Infrastructure as Code, allowing failed components to be recreated and restored consistently.
-
-4. **Observability**  
-   Infrastructure health, system metrics, logs, and service availability are monitored through a centralized monitoring stack.
-
-5. **Security**  
-   Administrative access is restricted through VPN-based connectivity, controlled firewall rules, SSH key authentication, TLS certificates, and dedicated service accounts.
-
-6. **Automation**  
-   Ansible and Terraform are used to automate infrastructure provisioning, system configuration, service deployment, and recovery operations.
-
-
+> Built as an Application Servers project for College and portfolio project demonstrating practical skills
+> Systems Administration, DevOps, Computer Networking and Security.
 
 ## Diagram
 </div>
 
-<img width="2591" height="2219" alt="Infra drawio (3)" src="https://github.com/user-attachments/assets/f4f3ea2f-8fe7-4afc-89ac-341bbe6cd27e" />
+<img width="2591" height="2219" alt="Infra drawio (4)" src="https://github.com/user-attachments/assets/da575947-d420-40f8-8df1-61b0116ec1d9" />
 
 ---
 
 <div align="left">
+
+## Project Highlights
+
+| Area | Implementation |
+|---|---|
+| Infrastructure as Code | Terraform, cloud-init, Ansible |
+| Virtualization | KVM/QEMU and libvirt on two physical hosts |
+| Networking | Routed branch networks connected through Tailscale |
+| Database HA | PostgreSQL, Patroni and etcd |
+| Distributed Storage | Three-node Garage S3 cluster |
+| Web Availability | NGINX services behind HAProxy |
+| Observability | Prometheus, Grafana, Loki and Telegram alerts |
+| Backup | Restic backups stored on dedicated RAID1 volumes |
+| Security | VPN-only administration, SSH keys, firewalling and local PKI |
+
+## Failure Scenarios
+
+- Loss of one branch: services continue through the remaining branch.
+- Loss of the PostgreSQL primary: Patroni promotes the replica.
+- Loss of one Garage node: S3 data remains available through the cluster.
+- Loss of a virtual machine: Terraform and Ansible can recreate its configuration.
 
 ## Stack
 
@@ -83,9 +83,8 @@ The architecture is designed around the following principles:
 | Competency | What the Project Demonstrates |
 |---|---|
 | **Systems Engineering** | Designing a distributed infrastructure across two sites and a separate cloud segment |
-| **DevOps and Automation** | Automated infrastructure deployment and service configuration |
+| **DevOps and Automation** | Automated infrastructure deployment and service configuration with Ansible |
 | **Infrastructure as Code** | Provisioning networks, storage volumes, virtual machines & cloud-init with Terraform |
-| **Configuration Management** | Configuring servers and services with Ansible |
 | **Linux Administration** | Managing Ubuntu and Alpine Linux systems, users, permissions, packages, and services |
 | **Virtualization** | Working with KVM, QEMU, and libvirt |
 | **Network Engineering** | Network segmentation, routing, NAT, VPN, DNS, and firewall configuration |
@@ -93,9 +92,7 @@ The architecture is designed around the following principles:
 | **Database Administration** | PostgreSQL, Patroni, etcd, streaming replication, and automatic primary promotion |
 | **Distributed Storage** | S3-compatible Garage storage and software RAID 1 |
 | **Containerization** | Deploying web services and infrastructure components with Docker |
-| **Monitoring and Observability** | Collecting metrics and logs with Prometheus, Grafana, and Loki + Alerts via Telegram Bot |
+| **Monitoring and Observability** | Collecting metrics and logs with Prometheus, Grafana, and Loki + Alerts via Telegram Bot 
 | **Backup and Recovery** | Automated backups using Restic |
 | **Cybersecurity** | SSH key authentication, VPN access, firewalls, TLS, PKI, and access control |
 | **Scripting** | Bash, Python and HTML scripting |
-| **Troubleshooting** | Diagnosing networking, SSH, cloud-init, libvirt, and cluster-related issues |
-| **Version Control and Documentation** | Managing source code with Git and documenting the infrastructure architecture |
