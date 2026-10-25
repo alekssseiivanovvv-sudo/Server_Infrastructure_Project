@@ -630,7 +630,110 @@ sudo garage bucket info product-images
 
 ---
 
-## 17. Final Validation
+## 17. Review the Current Layout and Buckets
+
+Before changing the bucket configuration, review the active Garage layout and the existing buckets:
+
+```bash
+sudo garage layout show
+sudo garage bucket list
+```
+
+This confirms that all three storage nodes still have active roles and that the `product-images` bucket already exists.
+
+<img width="715" height="240" alt="image" src="https://github.com/user-attachments/assets/58c40658-63bb-4b08-a256-9db317551129" />
+
+
+---
+
+## 18. Set the Product Images Quota
+
+Limit the `product-images` bucket to `2 GiB`:
+
+```bash
+sudo garage bucket set-quotas --max-size 2GiB product-images
+```
+
+The quota limits the logical amount of data that can be stored in the bucket. Because Garage uses a replication factor of `3`, the objects are still replicated to all three storage nodes.
+
+Verify the bucket information and the assigned application key:
+
+```bash
+sudo garage bucket info product-images
+```
+
+The expected result is a maximum size of `2.0 GiB` and read/write access for the `shop-web` key.
+
+<img width="715" height="348" alt="image" src="https://github.com/user-attachments/assets/44e74aee-a6b9-45a0-ac18-5a5058fb6d08" />
+
+
+---
+
+## 19. Create the Monitoring Logs Bucket
+
+Create a separate bucket for logs produced by the monitoring stack:
+
+```bash
+sudo garage bucket create monitoring-logs
+```
+
+Set an `8 GiB` quota for the new bucket:
+
+```bash
+sudo garage bucket set-quotas --max-size 8GiB monitoring-logs
+```
+
+Keeping logs in a separate bucket allows them to use their own credentials, permissions, quota, retention policy, and backup workflow without giving the monitoring services access to application images.
+
+Verify the result:
+
+```bash
+sudo garage bucket info monitoring-logs
+```
+
+<img width="715" height="582" alt="image" src="https://github.com/user-attachments/assets/6ff6e891-358c-428e-b0c2-ebf15cc34bb5" />
+
+
+---
+
+## 20. Import the Loki Storage Key
+
+Import the access key and secret key used by Loki:
+
+```bash
+sudo garage key import \
+  --yes \
+  -n loki-storage \
+  "<GARAGE_LOKI_ACCESS_KEY>" \
+  "<GARAGE_LOKI_SECRET_KEY>"
+```
+
+Replace the placeholders with the values stored in Ansible Vault. The example uses placeholders rather than shell variables, so the values should be pasted directly without a leading `$`.
+
+Grant the key read and write access only to the monitoring bucket:
+
+```bash
+sudo garage bucket allow \
+  --read \
+  --write \
+  monitoring-logs \
+  --key "<GARAGE_LOKI_ACCESS_KEY>"
+```
+
+Verify the permissions:
+
+```bash
+sudo garage bucket info monitoring-logs
+```
+
+The `loki-storage` key should have read and write access to `monitoring-logs` and no permissions for `product-images`.
+
+<img width="1403" height="594" alt="image" src="https://github.com/user-attachments/assets/06603bf4-99d3-43cf-850c-08a135c53e76" />
+
+
+---
+
+## 21. Final Validation
 
 Verify that the service is active:
 
@@ -650,16 +753,27 @@ Check the overall cluster health:
 sudo garage json-api GetClusterHealth
 ```
 
+Check both buckets and their quotas:
+
+```bash
+sudo garage bucket list
+sudo garage bucket info product-images
+sudo garage bucket info monitoring-logs
+```
+
 The expected result is:
 
 - Garage is active on all three nodes.
 - All three nodes are connected.
 - All partitions are available.
 - The cluster reports a healthy status.
-- The `product-images` bucket exists.
+- The `product-images` bucket has a `2 GiB` quota.
 - The `shop-web` key has read and write access to the bucket.
+- The `monitoring-logs` bucket has an `8 GiB` quota.
+- The `loki-storage` key has read and write access only to `monitoring-logs`.
 
-<img width="940" height="569" alt="image" src="https://github.com/user-attachments/assets/3a39fbaf-770a-4670-b29e-189ec29b1bb3" />
+<img width="607" height="274" alt="image" src="https://github.com/user-attachments/assets/6c8bdd9c-91a5-499e-a418-487fc3c8f8fc" />
+
 
 
 ---
@@ -699,7 +813,9 @@ The infrastructure now has a distributed, three-zone S3-compatible storage clust
 - Cross-zone object replication
 - Separate East, West, and Cloud failure domains
 - Authenticated S3 access
-- A dedicated bucket for product images
+- A `product-images` bucket with a `2 GiB` quota and a dedicated `shop-web` key
+- A separate `monitoring-logs` bucket with an `8 GiB` quota and a dedicated `loki-storage` key
+- Isolated permissions between application images and monitoring logs
 - A separate RAID1 volume prepared for database and log backups
 - Systemd service isolation and automatic restart
 - Health and metrics endpoints for future monitoring integration
