@@ -12,11 +12,19 @@
       - vault_garage_metrics_token | default('') | length >= 32
       - vault_garage_app_access_key | default('') is match('^GK.+')
       - vault_garage_app_secret_key | default('') | length >= 32
+      - vault_garage_loki_access_key | default('') is match('^GK.+')
+      - vault_garage_loki_secret_key | default('') | length >= 32
+      - >-
+        (vault_garage_app_access_key | default('')) !=
+        (vault_garage_loki_access_key | default(''))
+      - garage_app_bucket_name != garage_loki_bucket_name
     fail_msg: >-
       Garage requires exactly three s3_servers and the Vault variables
       vault_garage_rpc_secret, vault_garage_admin_token,
       vault_garage_metrics_token, vault_garage_app_access_key and
-      vault_garage_app_secret_key. Run this cluster play without --limit.
+      vault_garage_app_secret_key, vault_garage_loki_access_key and
+      vault_garage_loki_secret_key. The application and Loki must use separate
+      keys and buckets. Run this cluster play without --limit.
 
 - name: Select Garage zone from inventory groups
   ansible.builtin.set_fact:
@@ -24,11 +32,16 @@
       {{ 'east' if inventory_hostname in groups['east'] else
          'west' if inventory_hostname in groups['west'] else
          'cloud' if inventory_hostname in groups['cloud'] else '' }}
+    garage_tag: >-
+      {{ 'east_storage' if inventory_hostname in groups['east'] else
+         'west_storage' if inventory_hostname in groups['west'] else
+         'cloud_storage' if inventory_hostname in groups['cloud'] else '' }}
 
 - name: Validate Garage zone
   ansible.builtin.assert:
     that:
       - garage_zone in ['east', 'west', 'cloud']
+      - garage_tag in ['east_storage', 'west_storage', 'cloud_storage']
     fail_msg: "{{ inventory_hostname }} must belong to east, west or cloud."
 
 - name: Verify the RAID storage mount
@@ -146,5 +159,5 @@
 - name: Configure the Garage cluster
   ansible.builtin.import_tasks: cluster.yml
 
-- name: Configure the Garage bucket and application key
+- name: Configure the Garage buckets and service keys
   ansible.builtin.import_tasks: bucket.yml

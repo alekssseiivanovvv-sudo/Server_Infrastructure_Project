@@ -26,5 +26,10 @@ garage_web_port: 3902
 garage_admin_port: 3903
 garage_s3_region: garage
 
-garage_bucket_name: product-images
+garage_app_bucket_name: product-images
+garage_app_bucket_max_size: 2GiB
 garage_app_key_name: shop-web
+
+garage_loki_bucket_name: monitoring-logs
+garage_loki_bucket_max_size: 8GiB
+garage_loki_key_name: loki-storage

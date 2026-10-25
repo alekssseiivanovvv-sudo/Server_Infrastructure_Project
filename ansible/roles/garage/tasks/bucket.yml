@@ -5,10 +5,10 @@
       - /usr/local/bin/garage
       - bucket
       - info
-      - "{{ garage_bucket_name }}"
-  register: garage_bucket_info
+      - "{{ garage_app_bucket_name }}"
+  register: garage_app_bucket_info
   changed_when: false
-  failed_when: garage_bucket_info.rc not in [0, 1]
+  failed_when: garage_app_bucket_info.rc not in [0, 1]
   run_once: true
   delegate_to: "{{ garage_coordinator }}"
 
@@ -18,9 +18,22 @@
       - /usr/local/bin/garage
       - bucket
       - create
-      - "{{ garage_bucket_name }}"
+      - "{{ garage_app_bucket_name }}"
   changed_when: true
-  when: garage_bucket_info.rc != 0
+  when: garage_app_bucket_info.rc != 0
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Set the application bucket quota
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - bucket
+      - set-quotas
+      - --max-size
+      - "{{ garage_app_bucket_max_size }}"
+      - "{{ garage_app_bucket_name }}"
+  changed_when: false
   run_once: true
   delegate_to: "{{ garage_coordinator }}"
 
@@ -55,7 +68,7 @@
   run_once: true
   delegate_to: "{{ garage_coordinator }}"
 
-- name: Grant the application key read and write access
+- name: Grant the application key access to the application bucket
   ansible.builtin.command:
     argv:
       - /usr/local/bin/garage
@@ -63,7 +76,7 @@
       - allow
       - --read
       - --write
-      - "{{ garage_bucket_name }}"
+      - "{{ garage_app_bucket_name }}"
       - --key
       - "{{ vault_garage_app_access_key }}"
   changed_when: false
@@ -71,7 +84,92 @@
   run_once: true
   delegate_to: "{{ garage_coordinator }}"
 
-- name: Verify S3 authentication and object round trip
+- name: Check whether the monitoring bucket exists
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - bucket
+      - info
+      - "{{ garage_loki_bucket_name }}"
+  register: garage_loki_bucket_info
+  changed_when: false
+  failed_when: garage_loki_bucket_info.rc not in [0, 1]
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Create the monitoring bucket
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - bucket
+      - create
+      - "{{ garage_loki_bucket_name }}"
+  changed_when: true
+  when: garage_loki_bucket_info.rc != 0
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Set the monitoring bucket quota
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - bucket
+      - set-quotas
+      - --max-size
+      - "{{ garage_loki_bucket_max_size }}"
+      - "{{ garage_loki_bucket_name }}"
+  changed_when: false
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Check whether the Loki S3 key exists
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - key
+      - info
+      - "{{ vault_garage_loki_access_key }}"
+  register: garage_loki_key_info
+  changed_when: false
+  failed_when: garage_loki_key_info.rc not in [0, 1]
+  no_log: true
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Import the Loki S3 key
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - key
+      - import
+      - --yes
+      - -n
+      - "{{ garage_loki_key_name }}"
+      - "{{ vault_garage_loki_access_key }}"
+      - "{{ vault_garage_loki_secret_key }}"
+  changed_when: true
+  when: garage_loki_key_info.rc != 0
+  no_log: true
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Grant the Loki key access to the monitoring bucket
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - bucket
+      - allow
+      - --read
+      - --write
+      - "{{ garage_loki_bucket_name }}"
+      - --key
+      - "{{ vault_garage_loki_access_key }}"
+  changed_when: false
+  no_log: true
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Verify S3 authentication, isolation and object round trips
   ansible.builtin.command:
     argv:
       - /usr/bin/python3
@@ -86,7 +184,6 @@
       from botocore.exceptions import ClientError
 
       endpoint = os.environ['S3_ENDPOINT']
-      bucket = os.environ['S3_BUCKET']
 
       def s3_client(access=None, secret=None, unsigned=False):
           return boto3.client(
@@ -114,26 +211,38 @@
           else:
               raise RuntimeError('A forbidden S3 request succeeded')
 
-      app = s3_client(os.environ['S3_ACCESS_KEY'], os.environ['S3_SECRET_KEY'])
-      anonymous = s3_client(unsigned=True)
-      key = '_ansible-check/' + uuid.uuid4().hex
-      payload = b'garage-s3-cluster-check'
+      def verify_round_trip(client, bucket):
+          key = '_ansible-check/' + uuid.uuid4().hex
+          payload = b'garage-s3-cluster-check'
+          try:
+              client.put_object(Bucket=bucket, Key=key, Body=payload)
+              downloaded = client.get_object(Bucket=bucket, Key=key)['Body'].read()
+              if downloaded != payload:
+                  raise RuntimeError('Downloaded object differs from uploaded object')
+          finally:
+              client.delete_object(Bucket=bucket, Key=key)
 
-      require_denied(lambda: anonymous.list_objects_v2(Bucket=bucket, MaxKeys=1))
-      try:
-          app.put_object(Bucket=bucket, Key=key, Body=payload)
-          downloaded = app.get_object(Bucket=bucket, Key=key)['Body'].read()
-          if downloaded != payload:
-              raise RuntimeError('Downloaded object differs from uploaded object')
-          require_denied(lambda: anonymous.get_object(Bucket=bucket, Key=key))
-      finally:
-          app.delete_object(Bucket=bucket, Key=key)
+      app_bucket = os.environ['APP_BUCKET']
+      loki_bucket = os.environ['LOKI_BUCKET']
+      app = s3_client(os.environ['APP_ACCESS_KEY'], os.environ['APP_SECRET_KEY'])
+      loki = s3_client(os.environ['LOKI_ACCESS_KEY'], os.environ['LOKI_SECRET_KEY'])
+      anonymous = s3_client(unsigned=True)
+
+      require_denied(lambda: anonymous.list_objects_v2(Bucket=app_bucket, MaxKeys=1))
+      require_denied(lambda: anonymous.list_objects_v2(Bucket=loki_bucket, MaxKeys=1))
+      require_denied(lambda: app.list_objects_v2(Bucket=loki_bucket, MaxKeys=1))
+      require_denied(lambda: loki.list_objects_v2(Bucket=app_bucket, MaxKeys=1))
+      verify_round_trip(app, app_bucket)
+      verify_round_trip(loki, loki_bucket)
   environment:
     S3_ENDPOINT: "http://127.0.0.1:{{ garage_s3_port }}"
     S3_REGION: "{{ garage_s3_region }}"
-    S3_BUCKET: "{{ garage_bucket_name }}"
-    S3_ACCESS_KEY: "{{ vault_garage_app_access_key }}"
-    S3_SECRET_KEY: "{{ vault_garage_app_secret_key }}"
+    APP_BUCKET: "{{ garage_app_bucket_name }}"
+    APP_ACCESS_KEY: "{{ vault_garage_app_access_key }}"
+    APP_SECRET_KEY: "{{ vault_garage_app_secret_key }}"
+    LOKI_BUCKET: "{{ garage_loki_bucket_name }}"
+    LOKI_ACCESS_KEY: "{{ vault_garage_loki_access_key }}"
+    LOKI_SECRET_KEY: "{{ vault_garage_loki_secret_key }}"
   changed_when: false
   no_log: true
   run_once: true
@@ -142,6 +251,7 @@
 - name: Report Garage S3 initialization
   ansible.builtin.debug:
     msg: >-
-      Garage cluster is healthy. Bucket {{ garage_bucket_name }} and application
-      key {{ garage_app_key_name }} are ready.
+      Garage cluster is healthy. Buckets {{ garage_app_bucket_name }} and
+      {{ garage_loki_bucket_name }} are configured with separate application
+      and Loki credentials.
   run_once: true

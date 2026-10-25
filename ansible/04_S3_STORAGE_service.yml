@@ -1,4 +1,13 @@
 ---
+- name: Configure separate Garage and backup RAID arrays
+  hosts: s3_servers
+  become: true
+  gather_facts: true
+  serial: 1
+
+  roles:
+    - storage_raid
+
 - name: Install and configure the Garage S3 cluster
   hosts: s3_servers
   become: true
@@ -9,15 +18,3 @@
 
   roles:
     - garage
-
-- name: Configure separate Garage and backup RAID arrays
-  hosts: s3_servers
-  become: true
-  gather_facts: true
-  serial: 1
-
-  vars_files:
-    - group_vars/group/all/vault.yml
-
-  roles:
-    - storage_raid

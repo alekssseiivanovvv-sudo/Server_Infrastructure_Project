@@ -101,7 +101,7 @@
       - --capacity
       - "{{ garage_capacity }}"
       - --tag
-      - "{{ item }}"
+      - "{{ hostvars[item].garage_tag }}"
   changed_when: true
   loop: "{{ groups['s3_servers'] }}"
   when: garage_layout.roles | length == 0
