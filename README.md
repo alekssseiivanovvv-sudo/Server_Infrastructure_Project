@@ -2,7 +2,7 @@
 
  A distributed infrastructure project built entirely with Infrastructure as Code & Open Source solutions.
 
- ## 📑 Table of Contents
+ ## Table of Contents
 
 - [Overview](#-overview)
 - [Documentation](#-documentation) (WIP)
