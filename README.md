@@ -9,7 +9,7 @@
 
  ---
 
-## 📖 Overview
+## Overview
 
 A production-inspired infrastructure lab distributed across two remote branches
 and a cloud segment. Terraform provisions networks and virtual machines, while
