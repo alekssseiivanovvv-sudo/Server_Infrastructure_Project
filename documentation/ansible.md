@@ -67,11 +67,6 @@ execution:
 ansible-playbook 10_MONITORING_agents.yml --limit east_web --ask-vault-pass
 ```
 
-> [!IMPORTANT]
-> Some filenames intentionally retain their current spelling, including
-> `00_HYPERVISOR_bootsrap.yml` and `02_VM_initial_boorstrap.yml`. Commands must
-> use the exact repository filenames.
-
 ## Deployment order
 
 | Order | Playbook | Main target | Purpose |
@@ -239,10 +234,6 @@ Actions:
   required bucket permissions;
 - verifies that anonymous access and cross-bucket access are denied;
 - performs upload, download and deletion tests in both buckets.
-
-> [!WARNING]
-> Run the Garage cluster playbook without `--limit`. The role requires all
-> three `s3_servers` to participate and intentionally stops on a partial run.
 
 ### 05 — PostgreSQL high-availability cluster
 
