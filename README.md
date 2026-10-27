@@ -1,4 +1,4 @@
-<img width="2591" height="2219" alt="image" src="https://github.com/user-attachments/assets/a8da2dee-6e82-418e-875d-40686a2018c3" /># ⚙️ Distributed Automated Server Infrastructure Project
+ ## ⚙️ Distributed Automated Server Infrastructure Project
 
  A distributed infrastructure project built entirely with Infrastructure as Code & Open Source solutions.
 
