@@ -1,3 +1,0 @@
----
-ansible_become_exe: /usr/bin/sudo.ws
-hardware_admin_user: admin_aleksei
