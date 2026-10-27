@@ -56,7 +56,8 @@ The tailnet policy assigns stable Tailscale addresses to tagged routers and auto
 }
 ```
 
-![Screenshot 01 - Tailscale ACL policy with router addresses and route approvers](images/router-setup/screenshot-01.png)
+<img width="940" height="540" alt="image" src="https://github.com/user-attachments/assets/7260367b-e2a6-40f9-aff0-ebdbf37e5312" />
+
 
 **Screenshot 01 note:** The complete policy must also contain tag ownership and access grants. The screenshot shows only the address assignment and route approval section.
 
