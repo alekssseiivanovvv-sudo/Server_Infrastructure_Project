@@ -6,11 +6,6 @@
 
 - [Overview](#overview)
 - [Documentation (WIP)](documentation/)
-- [Project Highlights](#project-highlights)
-- [Failure Scenarios](#failure-scenarios)
-- [Stack](#stack)
-- [Skills Demonstrated](#skills-demonstrated)
-- [Authors](#authors)
 
  ---
 
