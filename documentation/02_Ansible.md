@@ -467,38 +467,6 @@ ansible-playbook db_switch_to_west.yml --ask-vault-pass
 
 ---
 
-## Useful verification commands
-
-Check connectivity to every managed host:
-
-```bash
-ansible all -m ping --ask-vault-pass
-```
-
-Check one inventory group:
-
-```bash
-ansible web_servers -m ping --ask-vault-pass
-```
-
-Preview changes where the modules support check mode:
-
-```bash
-ansible-playbook 03_FIREWALL_DNS.yml --check --diff --ask-vault-pass
-```
-
-Show the affected hosts and tasks without making changes:
-
-```bash
-ansible-playbook 06_WEB_HAPROXY_DNS_service.yml --list-hosts --list-tasks --ask-vault-pass
-```
-
-Run with more detailed troubleshooting output:
-
-```bash
-ansible-playbook 05_DB_cluster.yml --ask-vault-pass -vv
-```
-
 Because playbooks are executed from automation-node, all local paths, SSH keys,
 Vault files and generated certificates referenced by the playbooks must be
 available on that node.
