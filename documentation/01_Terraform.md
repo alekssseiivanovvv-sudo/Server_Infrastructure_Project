@@ -10,26 +10,6 @@ Terraform provides the infrastructure layer only. After the virtual machines are
 
 > Terraform creates and recreates infrastructure. Ansible configures the services running inside that infrastructure.
 
-## Table of Contents
-
-- [Responsibilities](#responsibilities)
-- [Architecture](#architecture)
-- [Provisioning Order](#provisioning-order)
-- [Terraform Directory Structure](#terraform-directory-structure)
-- [Requirements](#requirements)
-- [Configuration](#configuration)
-- [Secrets](#secrets)
-- [Current Virtual Machine Inventory](#current-virtual-machine-inventory)
-- [Network Layout](#network-layout)
-- [Reusable VM Module](#reusable-vm-module)
-- [Cloud-init Bootstrap](#cloud-init-bootstrap)
-- [Deployment](#deployment)
-- [Applying Configuration Changes](#applying-configuration-changes)
-- [Verification](#verification)
-- [Destroying the Infrastructure](#destroying-the-infrastructure)
-- [Terraform State](#terraform-state)
-- [Troubleshooting](#troubleshooting)
-- [Terraform and Ansible Workflow](#terraform-and-ansible-workflow)
 
 ---
 
