@@ -16,8 +16,8 @@ a cloud segment** and external DNS provider***. Terraform provisions networks an
 Ansible configures routing, security, databases, storage, web services,
 monitoring, and backups.
 
-> Built as a college application servers project and portfolio project demonstrating practical skills in systems administration, DevOps, computer networking, and cybersecurity.
-> 
+Built as a college application servers project and portfolio project demonstrating practical skills in systems administration, DevOps, computer networking, and cybersecurity.
+
 > ** Cloud segment is simulated on of the host computers by network segmentation
 > 
 > *** External DNS segment is simulated on of the host computers by network segmentation.
