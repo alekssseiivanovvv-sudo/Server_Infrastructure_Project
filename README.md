@@ -17,7 +17,10 @@ Ansible configures routing, security, databases, storage, web services,
 monitoring, and backups.
 
 Built as a college application servers project and portfolio project demonstrating practical skills in systems administration, DevOps, computer networking, and cybersecurity.
+Documentation also contains manual servers and services step-by-step configuration guides. 
 
+> Actual work is done on two remotely located computers hosting all the infrastructure
+> 
 > ** Cloud segment is simulated on of the host computers by network segmentation
 > 
 > *** External DNS segment is simulated on of the host computers by network segmentation.
@@ -99,3 +102,14 @@ Built as a college application servers project and portfolio project demonstrati
 | **Backup and Recovery** | Automated backups using Restic |
 | **Cybersecurity** | SSH key authentication, VPN access, firewalls, TLS, PKI, and access control |
 | **Scripting** | Bash, Python and HTML scripting |
+
+## Authors
+
+### Aleksei Ivanov - IT student
+
+### Ilja Melikov - IT student
+<div align="center">
+Tallinn Technology College / Tallinna Tehnoloogiakolledž
+
+2026
+</div>
