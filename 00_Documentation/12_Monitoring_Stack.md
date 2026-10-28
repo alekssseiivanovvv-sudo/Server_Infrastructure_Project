@@ -1,4 +1,3 @@
-
 # Monitoring Stack Deployment
 
 ## Overview
