@@ -12,7 +12,7 @@
 ## Overview
 
 An infrastructure lab distributed across two remote branches,
-a cloud segment** and external DNS provider***. Terraform provisions networks and virtual machines, while
+a cloud segment** and external DNS provider***. The main focus is to build stable IT infrastructure around for a Web Store Service. Terraform provisions networks and virtual machines, while
 Ansible configures routing, security, databases, storage, web services,
 monitoring, and backups.
 
