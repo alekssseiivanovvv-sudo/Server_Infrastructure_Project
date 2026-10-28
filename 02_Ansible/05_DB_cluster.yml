@@ -124,6 +124,15 @@
         - vault_postgres_backup_password
         - vault_patroni_api_password
       no_log: false
+    - name: Check PostgreSQL autotuning variables
+      ansible.builtin.assert:
+        that:
+          - postgres_tuning_config_path | default('') | length > 0
+          - postgres_tuning_storage in ['auto', 'ssd', 'hdd']
+          - postgres_tuning_assumed_max_connections | int >= 10
+        fail_msg: >-
+          PostgreSQL autotuning requires a config path, storage type
+          auto/ssd/hdd, and at least 10 assumed connections.
     - name: Install PostgreSQL and Patroni
       ansible.builtin.apt:
         name:
@@ -134,6 +143,7 @@
           - python3-etcd
           - python3-etcd3gw
           - sudo
+          - util-linux
         state: present
         update_cache: true
         cache_valid_time: 3600
@@ -162,6 +172,43 @@
         owner: postgres
         group: postgres
         mode: '0700'
+    - name: Install PostgreSQL hardware autotuner
+      ansible.builtin.copy:
+        src: files/postgresql-autotune.py
+        dest: /usr/local/sbin/project-postgresql-autotune
+        owner: root
+        group: root
+        mode: '0755'
+    - name: Generate hardware-specific PostgreSQL configuration
+      ansible.builtin.command:
+        argv:
+          - /usr/local/sbin/project-postgresql-autotune
+          - --output
+          - "{{ postgres_tuning_config_path }}"
+          - --data-dir
+          - "{{ patroni_data_dir }}"
+          - --storage
+          - "{{ postgres_tuning_storage }}"
+          - --max-connections
+          - "{{ postgres_tuning_assumed_max_connections | string }}"
+      register: postgresql_autotune_result
+      changed_when: postgresql_autotune_result.stdout is search('^updated:')
+      notify: Restart Patroni
+    - name: Verify generated PostgreSQL tuning configuration
+      ansible.builtin.stat:
+        path: "{{ postgres_tuning_config_path }}"
+      register: postgresql_tuning_config
+      failed_when: >-
+        not postgresql_tuning_config.stat.exists or
+        not postgresql_tuning_config.stat.isreg
+    - name: Verify PostgreSQL can read tuning configuration
+      ansible.builtin.command:
+        argv:
+          - test
+          - -r
+          - "{{ postgres_tuning_config_path }}"
+      become_user: postgres
+      changed_when: false
     - name: Install Patroni configuration
       ansible.builtin.template:
         src: templates/patroni.yml.j2

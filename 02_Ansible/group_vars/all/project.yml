@@ -6,6 +6,11 @@ postgres_app_database: shopdb
 postgres_app_user: appuser
 postgres_replication_user: replicator
 postgres_backup_user: backup_reader
+postgres_tuning_config_path: /etc/patroni/postgresql-tuning.conf
+# Use auto, ssd, or hdd. Set an explicit value if a VM hides the real disk type.
+postgres_tuning_storage: auto
+# Used only to size per-operation work_mem; keep it aligned with the cluster value.
+postgres_tuning_assumed_max_connections: 100
 project_database_remote_dir: /opt/project/database
 project_database_sql_file: shopdb.sql
 etcd_data_dir: /var/lib/etcd-project

@@ -40,6 +40,7 @@ postgresql:
   data_dir: {{ patroni_data_dir }}
   bin_dir: /usr/lib/postgresql/{{ postgres_major_version }}/bin
   pgpass: /var/lib/postgresql/.pgpass-patroni
+  custom_conf: {{ postgres_tuning_config_path }}
   authentication:
     superuser:
       username: postgres
