@@ -156,6 +156,7 @@ sudo install -o root -g root -m 0755 \
   /usr/local/bin/
 prometheus --version
 ```
+<img width="799" height="127" alt="image" src="https://github.com/user-attachments/assets/cac2f1d5-2253-4cbb-bec0-2b94b07f3cbf" />
 
 ---
 
@@ -188,6 +189,8 @@ promtool check config /etc/prometheus/prometheus.yml
 ```
 
 The last command must end with `SUCCESS`.
+
+<img width="799" height="69" alt="image" src="https://github.com/user-attachments/assets/d845caf8-7011-4889-ad01-4ea90cbc2d26" />
 
 ---
 
@@ -302,6 +305,8 @@ Verify from the monitoring VM:
 ```bash
 curl -s -o /dev/null -w '%{http_code}\n' http://192.168.74.6:3900/
 ```
+<img width="799" height="69" alt="image" src="https://github.com/user-attachments/assets/c5bc35b7-9d12-4b08-b901-65930cec6c15" />
+
 
 The result `403` is expected. It means the S3 API is reachable and refuses anonymous access. A timeout means the firewall still blocks the request.
 
@@ -366,6 +371,8 @@ sudo haproxy -c -f /etc/haproxy/haproxy.cfg
 sudo systemctl enable --now haproxy
 curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3900/
 ```
+<img width="799" height="69" alt="image" src="https://github.com/user-attachments/assets/9b12c7a2-5fb8-4d3f-bc4c-696e46431d49" />
+
 
 The last command must print `403`.
 
@@ -395,6 +402,7 @@ unzip -o /tmp/loki-linux-amd64-3.5.1.zip -d /tmp
 sudo install -o root -g root -m 0755 /tmp/loki-linux-amd64 /usr/local/bin/loki
 loki --version
 ```
+<img width="799" height="129" alt="image" src="https://github.com/user-attachments/assets/4b4ee487-ce7d-44b2-8396-e8d8ac4f91b7" />
 
 ---
 
@@ -481,6 +489,8 @@ sudo chown loki:loki /etc/loki/config.yml
 sudo chmod 0640 /etc/loki/config.yml
 sudo -u loki /usr/local/bin/loki -config.file=/etc/loki/config.yml -verify-config
 ```
+<img width="806" height="83" alt="image" src="https://github.com/user-attachments/assets/698ad463-5d76-4ae1-846e-f2278d8c6e24" />
+
 
 The last command must report that the configuration is valid.
 
@@ -567,6 +577,8 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now prometheus loki grafana-server
 systemctl is-active prometheus haproxy loki grafana-server
 ```
+<img width="806" height="110" alt="image" src="https://github.com/user-attachments/assets/c52a21d6-f6db-41a1-810f-09eff8ca963b" />
+
 
 All four lines must say `active`. If one does not, read its log, for example `sudo journalctl -u loki -n 50 --no-pager`.
 
@@ -586,6 +598,8 @@ curl -s http://127.0.0.1:9090/-/ready
 curl -s http://127.0.0.1:3100/ready
 curl -s http://127.0.0.1:3000/api/health
 ```
+<img width="806" height="170" alt="image" src="https://github.com/user-attachments/assets/3c9755e5-307e-483e-8d32-d2ac48b4b3f5" />
+
 
 Prometheus reports that it is ready, Loki prints `ready` (this can take about 15 seconds after the start), and Grafana returns JSON with `"database": "ok"`.
 
@@ -657,6 +671,7 @@ datasources:
 sudo chown grafana:grafana /etc/grafana/provisioning/datasources/ansible.yml
 sudo chmod 0640 /etc/grafana/provisioning/datasources/ansible.yml
 ```
+<img width="1713" height="480" alt="image" src="https://github.com/user-attachments/assets/343eed2b-56c4-45e0-b7db-5cdd858b1df5" />
 
 ---
 
@@ -717,6 +732,15 @@ sudo install -o grafana -g grafana -m 0644 \
   ~/infra/02_Ansible/files/grafana/dashboards/project-overview.json \
   /var/lib/grafana/dashboards/project/project-overview.json
 ```
+<img width="1536" height="910" alt="image" src="https://github.com/user-attachments/assets/d66b494b-8c9d-4d08-9d41-32b9e0d50c45" />
+
+<img width="1536" height="910" alt="image" src="https://github.com/user-attachments/assets/2cf86fed-0f12-436c-9216-cb1135f3a143" />
+
+<img width="1536" height="910" alt="image" src="https://github.com/user-attachments/assets/64a02dfa-5d6d-4f18-a9d4-91f1fe506e40" />
+
+
+<img width="806" height="221" alt="image" src="https://github.com/user-attachments/assets/33e47df6-ed06-432d-84fb-253b648ea37a" />
+
 
 The dashboards:
 
@@ -727,6 +751,8 @@ The dashboards:
 | Docker Containers | Prometheus | CPU, memory, network and uptime of each container on the web workers |
 | Project Overview | Prometheus and Loki | CPU and memory per host and the most recent logs. Used as the Grafana home page |
 
+
+
 Grafana picks up new dashboard files within about 10 seconds. Datasource files are read only at startup, so restart Grafana once:
 
 ```bash
@@ -734,6 +760,7 @@ sudo systemctl restart grafana-server
 sleep 15
 sudo journalctl -u grafana-server --since '2 minutes ago' --no-pager | grep -iE 'duplicate|provisioning.*(error|fail)'
 ```
+<img width="805" height="69" alt="image" src="https://github.com/user-attachments/assets/8415dc2e-c9c6-4440-b36f-ea534d876510" />
 
 The last command must print nothing.
 
@@ -753,6 +780,9 @@ sudo apk add alloy alloy-openrc shadow
 ```
 
 The `shadow` package provides the `usermod` command used in the next step.
+
+<img width="777" height="90" alt="image" src="https://github.com/user-attachments/assets/dffbc6e5-e3ae-4794-ad84-07119a13a6db" />
+
 
 **Ubuntu hosts:**
 
@@ -780,6 +810,8 @@ The `alloy` user must be in the groups that can read the system logs. On Docker 
 sudo usermod -aG wheel alloy
 sudo usermod -aG docker alloy     # Docker hosts only
 ```
+<img width="777" height="71" alt="image" src="https://github.com/user-attachments/assets/c82dbadb-8f30-4f5f-ae65-af30913acc3c" />
+
 
 **Ubuntu:**
 
@@ -805,6 +837,9 @@ grep command_user /etc/conf.d/alloy
 ```
 
 If the first command says the file does not exist, find the real path with `sudo find /run /var/run -name containerd.sock` and use it as `containerd_host` in the next step.
+
+<img width="777" height="162" alt="image" src="https://github.com/user-attachments/assets/6e1f8299-6877-4107-ba32-86475cf3cfdb" />
+
 
 ---
 
@@ -940,6 +975,8 @@ What the agent produces:
 | Container metrics | `instance`, `job="integrations/cadvisor"` | Docker Containers, alerts |
 | Container logs | `host`, `job="docker"`, `container_name` | Logs Overview |
 
+<img width="777" height="50" alt="image" src="https://github.com/user-attachments/assets/996c40df-bd63-4d7e-a94e-2fce59c33f74" />
+
 ---
 
 ## 25. Start Alloy
@@ -962,6 +999,9 @@ sudo systemctl restart alloy
 ```
 
 On Alpine, OpenRC gives up after five restarts in a short time and marks the service `failed`. In that case `rc-service alloy zap` clears the state, and after the cause is fixed `rc-service alloy start` starts it again.
+
+<img width="699" height="55" alt="image" src="https://github.com/user-attachments/assets/91263269-e1fe-4695-8fe2-36141f359f7d" />
+
 
 ---
 
@@ -990,6 +1030,8 @@ sudo timeout 60 /usr/bin/alloy run /etc/alloy/config.alloy \
   | grep -iE 'cadvisor|containerd|docker'
 sudo rc-service alloy start
 ```
+<img width="776" height="126" alt="image" src="https://github.com/user-attachments/assets/f6facf01-e12f-4cdb-8fe7-5ea3f46b8412" />
+
 
 Lines containing `Failed to create existing container` together with `containerd` mean the socket path is wrong (step 23) or Alloy is not running as root.
 
