@@ -367,14 +367,21 @@
         state: present
       loop: "{{ human_admin_users }}"
 
-    - name: Allow Alpine administrators to use sudo
+    # Do not use a password-required rule for the whole wheel group here.
+    # ansible_admin is also a wheel member, so a later %wheel rule would
+    # override its cloud-init NOPASSWD entry and break every subsequent run.
+    - name: Configure Alpine sudo policy for local and automation administrators
       ansible.builtin.copy:
         dest: /etc/sudoers.d/90-wheel
         owner: root
         group: root
         mode: "0440"
         content: |
-          %wheel ALL=(ALL:ALL) ALL
+          # Managed by Ansible
+          admin_aleksei ALL=(ALL:ALL) ALL
+          admin_ilja ALL=(ALL:ALL) ALL
+          system_admin ALL=(ALL:ALL) ALL
+          ansible_admin ALL=(ALL:ALL) NOPASSWD: ALL
         validate: /usr/sbin/visudo -cf %s
       when: ansible_facts.distribution == 'Alpine'
 
