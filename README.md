@@ -51,9 +51,11 @@ Documentation also contains manual servers and services step-by-step configurati
 ## Failure Scenarios
 
 - Loss of one branch: services continue through the remaining branch.
-- Loss of the PostgreSQL primary: Patroni promotes the replica.
+- Loss of cloud segment: Services continue working for clients, however automated management and monitoring would be unavailable.
+- Loss of the PostgreSQL primary: Patroni promotes the replica; Service continues work.
 - Loss of one Garage node: S3 data remains available through the cluster.
 - Loss of a virtual machine: Terraform and Ansible can recreate its configuration.
+
 
 ## Stack
 
