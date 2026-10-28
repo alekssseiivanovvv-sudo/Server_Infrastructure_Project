@@ -169,7 +169,7 @@
           }}
       loop: >-
         {{
-          (groups['infrastructure'] | default([]))
+          (groups['managed_vms'] | default([]))
           | product(['address', 'inventory_name', 'ssh_alias'])
           | list
         }}
@@ -200,7 +200,7 @@
           }}
       loop: >-
         {{
-          (groups['infrastructure'] | default([]))
+          (groups['managed_vms'] | default([]))
           | product(['address', 'inventory_name', 'ssh_alias'])
           | list
         }}
@@ -211,8 +211,8 @@
 # Human administrators authenticate through SSH keys only.
 # Their local passwords are used only for sudo.
 # system_admin has console access only and is deliberately excluded from SSH.
-- name: Create administrators on all infrastructure machines
-  hosts: infrastructure
+- name: Create administrators on all managed virtual machines
+  hosts: managed_vms
   become: true
   gather_facts: true
 
@@ -227,11 +227,6 @@
       - admin_aleksei
       - admin_ilja
     console_admin_user: system_admin
-    # Alpine sshd (without PAM) rejects public-key authentication when the
-    # shadow password starts with ! or *. This is a hash of a discarded
-    # high-entropy value: the account is active for SSH keys, but nobody has
-    # a usable console password.
-    alpine_key_only_password_hash: '$6$.HjM1eQMzJDI28TK$4Hs5uR5U12QNXZ8d22kr1QppM3MpTSESwxhRXilKUH/Ifyt3AcipQ7MEx4qycTfmTnxANxyGAUl4iKBviTy/20'
 
   tasks:
     - name: Check that both host public keys are available
@@ -272,8 +267,20 @@
         that:
           - item.password_hash is defined
           - item.password_hash | length > 0
+          - item.alpine_password_hash is not defined or item.alpine_password_hash | length > 0
         fail_msg: >-
-          Human administrator in Vault must contain password_hash.
+          Human administrator in Vault must contain password_hash. Optional
+          alpine_password_hash must not be empty when it is defined.
+      loop: "{{ selected_human_admins }}"
+      no_log: true
+
+    - name: Store human administrator configuration by name
+      ansible.builtin.set_fact:
+        selected_human_admins_by_name: >-
+          {{
+            selected_human_admins_by_name | default({})
+            | combine({item.name: item})
+          }}
       loop: "{{ selected_human_admins }}"
       no_log: true
 
@@ -295,21 +302,70 @@
         that:
           - selected_console_admin.password_hash is defined
           - selected_console_admin.password_hash | length > 0
+          - >-
+            selected_console_admin.alpine_password_hash is not defined or
+            selected_console_admin.alpine_password_hash | length > 0
         fail_msg: >-
           {{ console_admin_user }} in Vault must contain password_hash.
+          Optional alpine_password_hash must not be empty when it is defined.
+
+    # Ubuntu commonly uses yescrypt hashes beginning with $y$. Alpine 3.24
+    # uses musl/BusyBox and cannot verify those hashes. A portable SHA-512
+    # crypt hash beginning with $6$ is therefore required on Alpine. Keep the
+    # Ubuntu hash in password_hash and, when it is not already $6$, add the
+    # same password as a SHA-512 hash in alpine_password_hash.
+    - name: Check Alpine-compatible human administrator password hashes
+      ansible.builtin.assert:
+        that:
+          - effective_alpine_password_hash.startswith('$6$')
+        fail_msg: >-
+          {{ item }} needs a SHA-512 crypt hash beginning with $6$ for Alpine.
+          Add alpine_password_hash to this user's Vault entry, or make the
+          existing password_hash a SHA-512 crypt hash.
+      vars:
+        effective_alpine_password_hash: >-
+          {{
+            selected_human_admins_by_name[item].alpine_password_hash
+            | default(selected_human_admins_by_name[item].password_hash)
+          }}
+      loop: "{{ human_admin_users }}"
+      when: ansible_facts.distribution == 'Alpine'
+
+    - name: Check Alpine-compatible console administrator password hash
+      ansible.builtin.assert:
+        that:
+          - effective_alpine_password_hash.startswith('$6$')
+        fail_msg: >-
+          {{ console_admin_user }} needs a SHA-512 crypt hash beginning with
+          $6$ for Alpine. Add alpine_password_hash to this user's Vault entry,
+          or make the existing password_hash a SHA-512 crypt hash.
+      vars:
+        effective_alpine_password_hash: >-
+          {{
+            selected_console_admin.alpine_password_hash
+            | default(selected_console_admin.password_hash)
+          }}
+      when: ansible_facts.distribution == 'Alpine'
 
     - name: Create human administrators with local sudo passwords
       ansible.builtin.user:
-        name: "{{ item.name }}"
-        password: "{{ item.password_hash }}"
+        name: "{{ item }}"
+        password: >-
+          {{
+            (
+              selected_human_admins_by_name[item].alpine_password_hash
+              | default(selected_human_admins_by_name[item].password_hash)
+            )
+            if ansible_facts.distribution == 'Alpine'
+            else selected_human_admins_by_name[item].password_hash
+          }}
         update_password: always
         shell: "{{ '/bin/ash' if ansible_facts.distribution == 'Alpine' else '/bin/bash' }}"
         groups: "{{ ['wheel'] if ansible_facts.distribution == 'Alpine' else ['sudo'] }}"
         append: true
         create_home: true
         state: present
-      loop: "{{ selected_human_admins }}"
-      no_log: true
+      loop: "{{ human_admin_users }}"
 
     - name: Allow Alpine administrators to use sudo
       ansible.builtin.copy:
@@ -325,14 +381,21 @@
     - name: Create console-only system administrator
       ansible.builtin.user:
         name: "{{ console_admin_user }}"
-        password: "{{ selected_console_admin.password_hash }}"
+        password: >-
+          {{
+            (
+              selected_console_admin.alpine_password_hash
+              | default(selected_console_admin.password_hash)
+            )
+            if ansible_facts.distribution == 'Alpine'
+            else selected_console_admin.password_hash
+          }}
         update_password: always
         shell: "{{ '/bin/ash' if ansible_facts.distribution == 'Alpine' else '/bin/bash' }}"
         groups: "{{ ['wheel'] if ansible_facts.distribution == 'Alpine' else ['sudo'] }}"
         append: true
         create_home: true
         state: present
-      no_log: true
 
     - name: Add human administrator public keys
       ansible.posix.authorized_key:
