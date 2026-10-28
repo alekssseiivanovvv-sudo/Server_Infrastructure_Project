@@ -7,14 +7,17 @@ storage_pool = "default"
 # Remove a key from this set to allow Terraform to create the VM again.
 # The current list disables every VM that uses the Alpine base image.
 disabled_vms = [
-  "cloud_router",
-  "east_router",
-  "west_router",
-  "east-web",
-  "west-web",
-  "east-load-balancer",
-  "west-load-balancer",
-  "inet_dns",
+  #"east-db",
+  #"west-db",
+  #"cloud-quorum",
+  #  "cloud_router",
+  #  "east_router",
+  #  "west_router",
+  #  "east-web",
+  #  "west-web",
+  #  "east-load-balancer",
+  #  "west-load-balancer",
+  #  "inet_dns",
 ]
 
 # Routers must be created before servers because servers depend on their LAN networks.
