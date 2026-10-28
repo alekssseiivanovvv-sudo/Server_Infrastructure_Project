@@ -132,3 +132,9 @@ variable "enabled_hosts" {
     error_message = "Allowed hosts: host_1 and host_2."
   }
 }
+
+variable "disabled_vms" {
+  description = "VM map keys to remove from the infrastructure. Remove a key from this set to create the VM again."
+  type        = set(string)
+  default     = []
+}

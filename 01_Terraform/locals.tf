@@ -8,21 +8,21 @@ locals {
 
   routers_host_1 = {
     for key, router in var.vm-routers : key => router
-    if router.host == "host_1" && contains(var.enabled_hosts, "host_1") # added for test on 1 host
+    if router.host == "host_1" && contains(var.enabled_hosts, "host_1") && !contains(var.disabled_vms, key)
   }
 
   routers_host_2 = {
     for key, router in var.vm-routers : key => router
-    if router.host == "host_2" && contains(var.enabled_hosts, "host_2")
+    if router.host == "host_2" && contains(var.enabled_hosts, "host_2") && !contains(var.disabled_vms, key)
   }
 
   servers_host_1 = {
     for key, server in var.vm-servers : key => server
-    if server.host == "host_1" && contains(var.enabled_hosts, "host_1")
+    if server.host == "host_1" && contains(var.enabled_hosts, "host_1") && !contains(var.disabled_vms, key)
   }
 
   servers_host_2 = {
     for key, server in var.vm-servers : key => server
-    if server.host == "host_2" && contains(var.enabled_hosts, "host_2")
+    if server.host == "host_2" && contains(var.enabled_hosts, "host_2") && !contains(var.disabled_vms, key)
   }
 }

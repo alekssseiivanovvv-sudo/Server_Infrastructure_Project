@@ -37,12 +37,12 @@ variable "vm-external" {
 locals {
   external_host_1 = {
     for key, machine in var.vm-external : key => machine
-    if machine.host == "host_1" && contains(var.enabled_hosts, "host_1")
+    if machine.host == "host_1" && contains(var.enabled_hosts, "host_1") && !contains(var.disabled_vms, key)
   }
 
   external_host_2 = {
     for key, machine in var.vm-external : key => machine
-    if machine.host == "host_2" && contains(var.enabled_hosts, "host_2")
+    if machine.host == "host_2" && contains(var.enabled_hosts, "host_2") && !contains(var.disabled_vms, key)
   }
 }
 
