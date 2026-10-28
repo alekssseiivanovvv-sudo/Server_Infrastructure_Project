@@ -18,7 +18,7 @@ table inet project_data {
 {% if inventory_hostname in groups['s3_servers'] %}
     ip saddr { {{ groups['s3_servers'] | map('extract', hostvars, 'ansible_host') | join(', ') }} } tcp dport 3901 accept
     tcp dport 3901 drop
-    ip saddr { {{ (groups['balance_servers'] | map('extract', hostvars, 'ansible_host') | list + data_admin_ipv4 + data_extra_client_ipv4) | unique | join(', ') }} } tcp dport 3900 accept
+    ip saddr { {{ ((groups['balance_servers'] + groups['monitoring_servers']) | unique | map('extract', hostvars, 'ansible_host') | list + data_admin_ipv4 + data_extra_client_ipv4) | unique | join(', ') }} } tcp dport 3900 accept
     tcp dport 3900 drop
     ip saddr { {{ ((groups['s3_servers'] + groups['balance_servers'] + groups['monitoring_servers']) | unique | map('extract', hostvars, 'ansible_host') | list + data_admin_ipv4) | unique | join(', ') }} } tcp dport 3903 accept
     tcp dport { 3902, 3903 } drop

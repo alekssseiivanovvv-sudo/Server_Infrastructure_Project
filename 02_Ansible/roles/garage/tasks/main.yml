@@ -12,6 +12,8 @@
       - vault_garage_metrics_token | default('') | length >= 32
       - vault_garage_app_access_key | default('') is match('^GK.+')
       - vault_garage_app_secret_key | default('') | length >= 32
+      - not (garage_loki_enabled | bool) or (vault_garage_loki_access_key | default('') is match('^GK.+'))
+      - not (garage_loki_enabled | bool) or (vault_garage_loki_secret_key | default('') | length >= 32)
       - vault_garage_loki_access_key | default('') is match('^GK.+')
       - vault_garage_loki_secret_key | default('') | length >= 32
       - >-
@@ -161,3 +163,8 @@
 
 - name: Configure the Garage buckets and service keys
   ansible.builtin.import_tasks: bucket.yml
+
+- name: Configure the Garage log bucket and Loki key
+  ansible.builtin.import_tasks: bucket_loki.yml
+  when: garage_loki_enabled | bool
+  tags: [garage_loki]

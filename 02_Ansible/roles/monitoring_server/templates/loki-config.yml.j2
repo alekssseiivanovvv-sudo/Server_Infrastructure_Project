@@ -25,6 +25,27 @@ schema_config:
       index:
         prefix: index_
         period: 24h
+{% if loki_s3_enabled | bool %}
+    - from: "{{ loki_s3_schema_from }}"
+      store: tsdb
+      object_store: s3
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+storage_config:
+  filesystem:
+    directory: /var/lib/loki/chunks
+  aws:
+    endpoint: 127.0.0.1:{{ loki_s3_proxy_port }}
+    region: {{ loki_s3_region }}
+    bucketnames: {{ loki_s3_bucket }}
+    access_key_id: {{ loki_s3_access_key }}
+    secret_access_key: {{ loki_s3_secret_key }}
+    s3forcepathstyle: true
+    insecure: true
+{% endif %}
 
 limits_config:
   retention_period: 168h
@@ -34,7 +55,7 @@ compactor:
   compaction_interval: 10m
   retention_enabled: true
   retention_delete_delay: 2h
-  delete_request_store: filesystem
+  delete_request_store: {{ 's3' if loki_s3_enabled | bool else 'filesystem' }}
 
 analytics:
   reporting_enabled: false

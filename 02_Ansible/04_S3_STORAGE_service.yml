@@ -5,6 +5,9 @@
   gather_facts: true
   serial: 1
 
+  vars_files:
+    - group_vars/group/all/vault.yml
+
   roles:
     - storage_raid
 

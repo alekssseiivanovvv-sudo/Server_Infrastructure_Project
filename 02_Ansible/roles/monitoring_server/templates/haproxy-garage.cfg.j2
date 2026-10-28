@@ -1,0 +1,33 @@
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    chroot /var/lib/haproxy
+    stats socket /run/haproxy/admin.sock mode 660 level admin
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
+
+defaults
+    log global
+    mode tcp
+    option tcplog
+    option dontlognull
+    timeout connect 5s
+    timeout client 120s
+    timeout server 120s
+
+# Garage S3 for Loki. Only this host can reach it.
+frontend garage_s3_local
+    bind 127.0.0.1:{{ loki_s3_proxy_port }}
+    default_backend garage_s3_nodes
+
+backend garage_s3_nodes
+    balance roundrobin
+    option httpchk GET /health
+    http-check expect status 200
+    option allbackups
+{% set nodes = groups['s3_servers'] %}
+{% for node in ([loki_s3_primary_node] + (nodes | reject('equalto', loki_s3_primary_node) | list)) %}
+    server {{ node }} {{ hostvars[node].ansible_host }}:3900 check port {{ loki_s3_proxy_admin_port }} inter 3s fall 3 rise 2{{ '' if loop.first else ' backup' }}
+{% endfor %}

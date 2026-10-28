@@ -1,0 +1,21 @@
+---
+# Store Loki logs in the Garage S3 cluster (separate bucket) through a local
+# HAProxy that picks a healthy Garage node. Metrics stay on local disk.
+loki_s3_enabled: true
+
+# Local HAProxy in front of Garage (listens on loopback only).
+loki_s3_proxy_port: 3900
+loki_s3_proxy_admin_port: 3903
+loki_s3_region: garage
+loki_s3_bucket: loki-logs
+
+# The cloud node is primary (same subnet); east and west are fallbacks.
+loki_s3_primary_node: cloud_s3
+
+# Date from which new logs go to S3. Do not change it after the first deploy,
+# because Loki locates stored data by this date. Older logs stay on local disk
+# and expire with normal retention.
+loki_s3_schema_from: "2026-10-30"
+
+loki_s3_access_key: "{{ vault_garage_loki_access_key | default('') }}"
+loki_s3_secret_key: "{{ vault_garage_loki_secret_key | default('') }}"

@@ -1,0 +1,76 @@
+---
+# Separate bucket and S3 key for Loki. Run alone with:
+#   ansible-playbook 04_S3_STORAGE_service.yml --tags garage_loki
+- name: Check whether the Loki bucket exists
+  ansible.builtin.command:
+    argv: [/usr/local/bin/garage, bucket, info, "{{ garage_loki_bucket_name }}"]
+  register: garage_loki_bucket_info
+  changed_when: false
+  failed_when: garage_loki_bucket_info.rc not in [0, 1]
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Create the Loki bucket
+  ansible.builtin.command:
+    argv: [/usr/local/bin/garage, bucket, create, "{{ garage_loki_bucket_name }}"]
+  changed_when: true
+  when: garage_loki_bucket_info.rc != 0
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Check whether the Loki S3 key exists
+  ansible.builtin.command:
+    argv: [/usr/local/bin/garage, key, info, "{{ vault_garage_loki_access_key }}"]
+  register: garage_loki_key_info
+  changed_when: false
+  failed_when: garage_loki_key_info.rc not in [0, 1]
+  no_log: true
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Import the Loki S3 key
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - key
+      - import
+      - --yes
+      - -n
+      - "{{ garage_loki_key_name }}"
+      - "{{ vault_garage_loki_access_key }}"
+      - "{{ vault_garage_loki_secret_key }}"
+  changed_when: true
+  when: garage_loki_key_info.rc != 0
+  no_log: true
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Grant the Loki key read and write access to its bucket only
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - bucket
+      - allow
+      - --read
+      - --write
+      - "{{ garage_loki_bucket_name }}"
+      - --key
+      - "{{ vault_garage_loki_access_key }}"
+  changed_when: false
+  no_log: true
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"
+
+- name: Limit the Loki bucket size
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/garage
+      - bucket
+      - set-quotas
+      - "{{ garage_loki_bucket_name }}"
+      - --max-size
+      - "{{ garage_loki_bucket_max_size }}"
+  changed_when: false
+  when: garage_loki_bucket_max_size | length > 0
+  run_once: true
+  delegate_to: "{{ garage_coordinator }}"

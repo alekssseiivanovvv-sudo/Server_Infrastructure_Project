@@ -101,6 +101,46 @@
     - Reload systemd
     - Restart prometheus
 
+- name: Check Loki S3 settings
+  ansible.builtin.assert:
+    that:
+      - loki_s3_access_key is match('^GK.+')
+      - loki_s3_secret_key | length >= 32
+      - loki_s3_primary_node in groups['s3_servers']
+      - groups['s3_servers'] | length > 0
+    fail_msg: >-
+      Add vault_garage_loki_access_key (starts with GK) and
+      vault_garage_loki_secret_key (at least 32 characters) to
+      group_vars/group/all/vault.yml, or set loki_s3_enabled: false.
+  no_log: true
+  when: loki_s3_enabled | bool
+
+- name: Install HAProxy for the Garage S3 proxy
+  ansible.builtin.apt:
+    name: haproxy
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: loki_s3_enabled | bool
+
+- name: Configure the local Garage S3 proxy
+  ansible.builtin.template:
+    src: haproxy-garage.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: "0644"
+    validate: haproxy -c -f %s
+  when: loki_s3_enabled | bool
+  notify: Restart haproxy
+
+- name: Enable and start the Garage S3 proxy
+  ansible.builtin.systemd:
+    name: haproxy
+    enabled: true
+    state: started
+  when: loki_s3_enabled | bool
+
 - name: Create loki user
   ansible.builtin.user:
     name: loki
@@ -159,7 +199,8 @@
     dest: /etc/loki/config.yml
     owner: loki
     group: loki
-    mode: "0644"
+    mode: "0640"
+  no_log: "{{ loki_s3_enabled | bool }}"
   notify: Restart loki
 
 - name: Configure Loki systemd service
@@ -310,6 +351,16 @@
   retries: 12
   delay: 5
   until: prometheus_ready.status == 200
+
+- name: Check that the Garage S3 proxy reaches a healthy node
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ loki_s3_proxy_port }}/"
+    status_code: [200, 403]
+  register: loki_s3_proxy_ready
+  retries: 6
+  delay: 5
+  until: loki_s3_proxy_ready.status in [200, 403]
+  when: loki_s3_enabled | bool
 
 - name: Check Loki HTTP endpoint
   ansible.builtin.uri:
