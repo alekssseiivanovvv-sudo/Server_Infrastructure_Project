@@ -1,6 +1,7 @@
 
 # Garage S3 Storage Cluster Deployment
-
+[![Garage](https://img.shields.io/badge/Garage-FF6B35?style=for-the-badge&logoColor=white)](https://garagehq.deuxfleurs.fr/)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com/)
 ## Overview
 
 This document describes the manual deployment of a three-node, S3-compatible storage cluster based on [Garage](https://garagehq.deuxfleurs.fr/).
