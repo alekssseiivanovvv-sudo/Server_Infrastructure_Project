@@ -1,6 +1,7 @@
 # Manual PostgreSQL Cluster Installation with Patroni and etcd
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Patroni](https://img.shields.io/badge/Patroni-336791?style=for-the-badge&logoColor=white)](https://github.com/patroni/patroni)
+[![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com/)
 
 This guide describes the manual installation of a PostgreSQL cluster with automatic failover. etcd runs on three virtual machines and stores the cluster coordination state. Patroni manages PostgreSQL on the two database nodes.
