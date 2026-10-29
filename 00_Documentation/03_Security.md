@@ -301,6 +301,7 @@ placeholders are expected.
 
 - Grafana administrator and Telegram alerting credentials come from Vault.
 - Monitoring ports are limited to the project LANs and Tailscale.
+- Monitoring uses S3 Cluster for storage, which reduces failure and prevents loss of data.
 - Backup jobs run as the locked `restic_sysuser` service account.
 - The Garage backup key is read-only.
 - Restic encrypts every repository and reads its password from a `0600` file.
