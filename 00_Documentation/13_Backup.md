@@ -13,7 +13,7 @@ The procedure was tested on both storage nodes. Commands that configure the oper
 - **Isolation:** all backup operations run as the non-login system account `restic_sysuser`.
 - **Scheduling:** the PostgreSQL backup runs daily at 02:10 UTC through a systemd timer.
 
-## 1 Create a read-only Garage key
+## 1. Create a read-only Garage key
 
 Create a dedicated Garage key for backups. The key does not need permission to create buckets; it only needs read access to the two existing data buckets.
 
@@ -43,7 +43,7 @@ sudo garage key info backup-reader
 
 <img width="1383" height="676" alt="image" src="https://github.com/user-attachments/assets/18dbcaa8-32b4-49e2-a5dc-aec3e2e1d740" />
 
-## 2 Install the backup tools
+## 2. Install the backup tools
 
 Restic stores encrypted snapshots, rclone reads the Garage S3 API, the PostgreSQL client provides `psql`, `pg_dump`, and `pg_restore`, and `util-linux` provides `flock` and `mountpoint`.
 
@@ -55,7 +55,7 @@ sudo apt install -y restic rclone postgresql-client-18 util-linux
 <img width="1741" height="1110" alt="image" src="https://github.com/user-attachments/assets/3fb039d5-9983-4efe-9d98-4a90f3de4dbc" />
 
 
-## 3 Create the service account and directories
+## 3. Create the service account and directories
 
 The dedicated account has no interactive shell. Repository, staging, cache, and configuration directories are owned so that the backup process can run without using root for normal data access.
 
@@ -82,7 +82,7 @@ sudo install -d -o root -g restic_sysuser -m 0750 /etc/project-backup
 <img width="1744" height="695" alt="image" src="https://github.com/user-attachments/assets/1eeac8bc-a549-4f4c-8075-d9d8b5556cc6" />
 
 
-## 4 Configure the Restic repository password
+## 4. Configure the Restic repository password
 
 The same password file can unlock all three repositories on one node. Store its value in Ansible Vault for automated deployment. Losing this password makes the Restic snapshots unrecoverable.
 
@@ -96,7 +96,7 @@ The file must contain only the repository password and a final newline.
 <img width="712" height="695" alt="image" src="https://github.com/user-attachments/assets/ea8c1456-652b-4322-9199-1cd5ac65b641" />
 
 
-## 5 Configure rclone for Garage S3
+## 5. Configure rclone for Garage S3
 
 Each storage node connects to its local Garage S3 endpoint at `127.0.0.1:3900`. The `backup-reader` credentials are used only for reading objects into the staging directories.
 
@@ -132,7 +132,7 @@ sudo -u restic_sysuser rclone --config /etc/project-backup/rclone.conf size gara
 <img width="1104" height="707" alt="image" src="https://github.com/user-attachments/assets/72f7e443-cb3c-479c-9dc8-be7bde32b667" />
 
 
-## 6 Initialize the Restic repositories
+## 6. Initialize the Restic repositories
 
 Separate repositories make retention, restoration, and access checks independent for images, Loki logs, and PostgreSQL. Initialize all three repositories on each storage VM.
 
@@ -148,7 +148,7 @@ sudo -u restic_sysuser env RESTIC_PASSWORD_FILE=/etc/project-backup/restic-passw
 <img width="1401" height="885" alt="image" src="https://github.com/user-attachments/assets/bab879db-7d6a-4e2b-8269-34dc0880b47c" />
 
 
-## 7 Test the S3 backup workflow
+## 7. Test the S3 backup workflow
 
 The staging directory is synchronized from Garage before Restic creates a snapshot. The `sync` operation also removes local staging files that no longer exist in the source bucket, while historical versions remain available in older Restic snapshots.
 
@@ -187,7 +187,7 @@ sudo -u restic_sysuser env RESTIC_PASSWORD_FILE=/etc/project-backup/restic-passw
 <img width="1698" height="1058" alt="image" src="https://github.com/user-attachments/assets/88af1130-a329-4008-b685-b41c49e9e2e0" />
 
 
-## 8 Configure PostgreSQL authentication
+## 8. Configure PostgreSQL authentication
 
 The backup account must be able to connect to both Patroni database nodes. The `.pgpass` format is `host:port:database:user:password`, with one line for each possible Primary.
 
@@ -206,7 +206,7 @@ sudoedit /etc/project-backup/pgpass
 <img width="1507" height="742" alt="image" src="https://github.com/user-attachments/assets/4e39a82d-c7ad-4c66-831c-c2a4befb47d1" />
 
 
-## 9 Prepare the PostgreSQL staging area
+## 9. Prepare the PostgreSQL staging area
 
 The database dump and its metadata are written to a protected staging directory. Restic cache data is kept under `/var/lib/project-backup/restic-cache` so the service can run with `ProtectHome=true`.
 
@@ -220,7 +220,7 @@ sudo install -d -o restic_sysuser -g restic_sysuser -m 0700 \
 <img width="1698" height="1058" alt="image" src="https://github.com/user-attachments/assets/a9de0985-a42d-4c71-8fef-a7e6cf2a9d89" />
 
 
-## 10 Create the Primary-aware database backup script
+## 10. Create the Primary-aware database backup script
 
 The script checks both database nodes and continues only when exactly one node reports itself as Primary. It writes the dump to a temporary file, verifies that the same node is still Primary after `pg_dump`, validates the dump with `pg_restore --list`, and only then moves the file into its final location. This prevents an interrupted failover from producing a snapshot that appears successful but contains an incomplete or stale dump.
 
@@ -449,7 +449,7 @@ sudo chmod 0755 /usr/local/sbin/project-db-backup
 <img width="1698" height="1101" alt="image" src="https://github.com/user-attachments/assets/54f179dd-9bb8-4c74-8d76-1f204a21131d" />
 
 
-## 11 Create the systemd service
+## 11. Create the systemd service
 
 The oneshot service runs as `restic_sysuser`, refuses to start when `/srv/backup` is not mounted, and limits writable paths to the backup volume and working directory.
 
@@ -503,7 +503,7 @@ sudo -u restic_sysuser env RESTIC_PASSWORD_FILE=/etc/project-backup/restic-passw
 <img width="1507" height="911" alt="image" src="https://github.com/user-attachments/assets/d949e9ae-2cec-4c5d-9cf2-ed1b527beee9" />
 
 
-## 12 Schedule the daily database backup
+## 12. Schedule the daily database backup
 
 The timer runs the service every day at 02:10 UTC. `Persistent=true` causes a missed run to start after the machine becomes available again, while the randomized delay prevents both storage nodes from starting at exactly the same second.
 
@@ -539,7 +539,7 @@ sudo systemctl enable --now project-db-backup.timer
 <img width="1222" height="911" alt="image" src="https://github.com/user-attachments/assets/fb245c63-2c5c-4f62-bf50-cba283ee79df" />
 
 
-## 13 Verification and maintenance
+## 13. Verification and maintenance
 
 Use the following commands after deployment and during troubleshooting.
 
