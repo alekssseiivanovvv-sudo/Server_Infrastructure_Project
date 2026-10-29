@@ -1,6 +1,8 @@
 # Backup Configuration for Garage S3 and PostgreSQL
 [![restic](https://img.shields.io/badge/restic-4A90D9?style=for-the-badge&logo=restic&logoColor=white)](https://restic.net/)
 [![Bash](https://img.shields.io/badge/Bash-4EAA25?style=for-the-badge&logo=gnubash&logoColor=white)](https://www.gnu.org/software/bash/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Garage](https://img.shields.io/badge/Garage-FF6B35?style=for-the-badge&logoColor=white)](https://garagehq.deuxfleurs.fr/)
 [![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com/)
 
 This document describes the manual backup configuration used on the `east-storage` and `west-storage` virtual machines in the distributed infrastructure project. The solution protects the two Garage S3 buckets (`product-images` and `monitoring-logs`) and the Patroni-managed PostgreSQL database (`shopdb`). S3 objects are first synchronized to a local staging directory with rclone, while the database is dumped only from the current Patroni Primary. Restic then creates encrypted, deduplicated snapshots on the dedicated `/srv/backup` RAID1 volume of each storage server.
