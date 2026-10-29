@@ -19,9 +19,9 @@ The documentation covers the architecture, deployment, and step-by-step manual c
 
 > Actual work is done on two remotely located computers hosting all the infrastructure.
 > 
-> ** Cloud segment is simulated on of the host computers by network segmentation.
+> ** Cloud segment is simulated on one of the host computers by network segmentation.
 > 
-> *** External DNS segment is simulated on of the host computers by network segmentation.
+> *** External DNS segment is simulated on one of the host computers by network segmentation.
 
 ## Diagram
 </div>
