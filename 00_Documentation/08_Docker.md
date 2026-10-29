@@ -1,5 +1,7 @@
 # Docker Container Runtime for the Shop Web Workers
 
+[![Alpine Linux](https://img.shields.io/badge/Alpine_Linux-0D597F?style=for-the-badge&logo=alpinelinux&logoColor=white)](https://alpinelinux.org/) [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+
 ## Overview
 
 This document describes how Docker is used in the project. Docker runs only on the two Alpine web workers, `east-web` and `west-web`. Each worker runs the same two-container application stack managed by Docker Compose:
