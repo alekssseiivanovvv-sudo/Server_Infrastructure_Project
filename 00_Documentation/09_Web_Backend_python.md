@@ -1,5 +1,7 @@
 # Python Web Backend
 
+[![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+
 ## Overview
 
 The backend is a small Flask application served by gunicorn inside the `python-backend` container. It implements the shop API, stores data in PostgreSQL and product images in the Garage S3 cluster.
