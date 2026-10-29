@@ -75,6 +75,8 @@ curl -s http://127.0.0.1/health
 | Image upload fails | Backend log: `docker logs python-backend` |
 | Container restarts | Missing or malformed `.env` |
 
+<img width="1440" height="930" alt="image" src="https://github.com/user-attachments/assets/fcd73bb9-34a2-4748-ad18-fe3ad9b079db" />
+
 ## Result
 
 The backend is a stateless service: all data lives in PostgreSQL and Garage, so any web worker can serve any request and a failed container can be replaced without data loss.
