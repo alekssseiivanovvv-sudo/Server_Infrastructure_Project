@@ -93,7 +93,6 @@ Documentation also contains manual servers and services step-by-step configurati
 | **Systems Engineering** | Designing a distributed infrastructure across two sites and a separate cloud segment |
 | **DevOps and Automation** | Automated infrastructure deployment and service configuration with Ansible |
 | **Infrastructure as Code** | Provisioning networks, storage volumes, virtual machines & cloud-init with Terraform |
-| **Scripting** | Bash, Python and HTML scripting |
 | **Linux Administration** | Managing Ubuntu and Alpine Linux systems, users, permissions, packages, and services |
 | **Network Engineering** | Network segmentation, routing, NAT, VPN, DNS, and firewall configuration |
 | **Cybersecurity** | SSH key authentication, VPN access, firewalls, TLS, PKI, and access control |
@@ -102,6 +101,7 @@ Documentation also contains manual servers and services step-by-step configurati
 | **Database Administration** | PostgreSQL, Patroni, etcd, streaming replication, and automatic primary promotion |
 | **Distributed Storage** | S3-compatible Garage storage and software RAID 1 |
 | **Backup and Recovery** | Automated backups using Restic |
+| **Scripting** | Bash, Python and HTML scripting |
 | **Virtualization** | Working with KVM, QEMU, and libvirt | 
 | **Containerization** | Deploying web services and infrastructure components with Docker |
 
