@@ -12,16 +12,14 @@
 ## Overview
 
 An infrastructure lab distributed across two remote branches,
-a cloud segment** and external DNS provider***. The main focus is to build stable IT infrastructure around a Web Store Service. Terraform provisions networks and virtual machines, while
-Ansible configures routing, security, databases, storage, web services,
-monitoring, and backups.
+a cloud segment** and external DNS provider***. The project focuses on service availability, secure connectivity, data protection, centralized monitoring and automation.
 
 Built as a college application servers project and portfolio project demonstrating practical skills in systems administration, DevOps, computer networking, and cybersecurity.
-Documentation also contains manual servers and services step-by-step configuration guides. 
+The documentation covers the architecture, deployment, and step-by-step manual configuration of servers and services.
 
-> Actual work is done on two remotely located computers hosting all the infrastructure
+> Actual work is done on two remotely located computers hosting all the infrastructure.
 > 
-> ** Cloud segment is simulated on of the host computers by network segmentation
+> ** Cloud segment is simulated on of the host computers by network segmentation.
 > 
 > *** External DNS segment is simulated on of the host computers by network segmentation.
 
