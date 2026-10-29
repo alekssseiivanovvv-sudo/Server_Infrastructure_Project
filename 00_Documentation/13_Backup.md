@@ -41,7 +41,8 @@ sudo garage bucket allow --read monitoring-logs --key backup-reader
 sudo garage key info backup-reader
 ```
 
-<img width="1383" height="676" alt="image" src="https://github.com/user-attachments/assets/18dbcaa8-32b4-49e2-a5dc-aec3e2e1d740" />
+<img width="1383" height="676" alt="image" src="https://github.com/user-attachments/assets/5471ec34-693e-4276-a3ed-f4f70406550c" />
+
 
 ## 2. Install the backup tools
 
