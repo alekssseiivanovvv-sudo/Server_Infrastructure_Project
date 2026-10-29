@@ -1,5 +1,6 @@
 # Manual HAProxy Configuration
-
+[![HAProxy](https://img.shields.io/badge/HAProxy-106DA9?style=for-the-badge&logo=haproxy&logoColor=white)](https://www.haproxy.org/)
+[![Alpine Linux](https://img.shields.io/badge/Alpine_Linux-0D597F?style=for-the-badge&logo=alpinelinux&logoColor=white)](https://alpinelinux.org/)
 ## Overview
 
 This guide configures two HAProxy instances on Alpine Linux, one in EAST and one in WEST. Each instance provides an HTTP entry point for the existing web workers, a PostgreSQL connection endpoint that follows the Patroni primary, and an S3 endpoint for the Garage cluster.
