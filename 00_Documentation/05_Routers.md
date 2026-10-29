@@ -1,5 +1,7 @@
 # Manual Alpine Linux Router Installation and Configuration
-
+[![Alpine Linux](https://img.shields.io/badge/Alpine_Linux-0D597F?style=for-the-badge&logo=alpinelinux&logoColor=white)](https://alpinelinux.org/)[![Tailscale](https://img.shields.io/badge/Tailscale-242424?style=for-the-badge&logo=tailscale&logoColor=white)](https://tailscale.com/)
+[![fail2ban](https://img.shields.io/badge/fail2ban-FF6600?style=for-the-badge&logo=linux&logoColor=white)](https://www.fail2ban.org/)
+[![OpenSSH](https://img.shields.io/badge/OpenSSH-2C3E50?style=for-the-badge&logoColor=white)](https://www.openssh.com/)
 ## Overview
 
 This guide documents the manual installation and configuration of an Alpine Linux virtual router used in the distributed infrastructure project. Dedicated routers make the laboratory topology closer to a real multi-site environment by separating WAN, LAN and VPN traffic instead of connecting every service VM directly to the external network.
