@@ -1,5 +1,10 @@
 # Infrastructure Security
-
+[![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://www.linux.org/)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com/)
+[![Alpine Linux](https://img.shields.io/badge/Alpine_Linux-0D597F?style=for-the-badge&logo=alpinelinux&logoColor=white)](https://alpinelinux.org/)
+[![Tailscale](https://img.shields.io/badge/Tailscale-242424?style=for-the-badge&logo=tailscale&logoColor=white)](https://tailscale.com/)
+[![fail2ban](https://img.shields.io/badge/fail2ban-FF6600?style=for-the-badge&logo=linux&logoColor=white)](https://www.fail2ban.org/)
+[![OpenSSH](https://img.shields.io/badge/OpenSSH-2C3E50?style=for-the-badge&logoColor=white)](https://www.openssh.com/)
 ## Overview
 
 This document describes the security model used in the distributed
