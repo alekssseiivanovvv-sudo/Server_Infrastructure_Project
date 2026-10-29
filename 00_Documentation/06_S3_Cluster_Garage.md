@@ -729,8 +729,7 @@ sudo garage bucket info monitoring-logs
 
 The `loki-storage` key should have read and write access to `monitoring-logs` and no permissions for `product-images`.
 
-<img width="1403" height="594" alt="image" src="https://github.com/user-attachments/assets/06603bf4-99d3-43cf-850c-08a135c53e76" />
-
+<img width="1403" height="594" alt="image" src="https://github.com/user-attachments/assets/b291ca3e-7b00-4e68-adf8-d12320beb4ec" />
 
 ---
 
