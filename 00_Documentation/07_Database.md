@@ -10,14 +10,6 @@ This guide describes the manual installation of a PostgreSQL cluster with automa
 | West DB | `west_db` | `192.168.73.4` | etcd, Patroni, PostgreSQL |
 | Cloud quorum | `cloud_quorum` | `192.168.74.5` | Third etcd member |
 
-Connect over SSH using port `2222`:
-
-```bash
-ssh -p 2222 admin_aleksei@192.168.72.4
-ssh -p 2222 admin_aleksei@192.168.73.4
-ssh -p 2222 admin_aleksei@192.168.74.5
-```
-
 ## 1. Install etcd
 
 ### 1.1 Install the Packages
