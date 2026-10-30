@@ -9,6 +9,8 @@
 
   roles:
     - router_firewall
+    - role: router_fail2ban
+      tags: [fail2ban]
     - router_dns
 
 

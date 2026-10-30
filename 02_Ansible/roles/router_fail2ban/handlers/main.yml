@@ -1,0 +1,10 @@
+---
+- name: Reload router SSH for Fail2ban
+  ansible.builtin.service:
+    name: sshd
+    state: reloaded
+
+- name: Restart router Fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: restarted

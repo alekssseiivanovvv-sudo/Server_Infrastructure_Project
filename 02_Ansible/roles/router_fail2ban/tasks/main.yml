@@ -1,0 +1,123 @@
+---
+- name: Check router Fail2ban prerequisites
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.distribution == 'Alpine'
+      - router_fail2ban_ssh_port | int > 0
+      - router_fail2ban_ssh_port | int <= 65535
+      - router_fail2ban_maxretry | int > 0
+    fail_msg: "Router Fail2ban requires Alpine and a valid SSH port/retry count."
+
+- name: Install Fail2ban and OpenRC logging/firewall services
+  community.general.apk:
+    name:
+      - fail2ban
+      - fail2ban-openrc
+      - busybox-syslog
+      - nftables
+      - nftables-openrc
+      # Older nftables actions use grep -P, unsupported by BusyBox grep.
+      - grep
+    state: present
+    update_cache: true
+
+- name: Enable and start router syslog
+  ansible.builtin.service:
+    name: syslog
+    enabled: true
+    state: started
+
+- name: Enable and start nftables before Fail2ban
+  ansible.builtin.service:
+    name: nftables
+    enabled: true
+    state: started
+
+- name: Log failed SSH public-key authentication attempts
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^\s*LogLevel\s+'
+    line: LogLevel VERBOSE
+    insertbefore: BOF
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Reload router SSH for Fail2ban
+
+- name: Create Fail2ban configuration directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - /etc/fail2ban/jail.d
+    - /etc/fail2ban/filter.d
+    - /etc/conf.d
+
+- name: Start Fail2ban after logging and firewall at boot
+  ansible.builtin.lineinfile:
+    path: /etc/conf.d/fail2ban
+    regexp: '^rc_need='
+    line: 'rc_need="syslog nftables"'
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart router Fail2ban
+
+- name: Install SSH filter for Alpine syslog prefixes
+  ansible.builtin.copy:
+    src: project-router-sshd.conf
+    dest: /etc/fail2ban/filter.d/project-router-sshd.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart router Fail2ban
+
+- name: Configure SSH jail for Alpine and nftables
+  ansible.builtin.template:
+    src: sshd.local.j2
+    dest: /etc/fail2ban/jail.d/99-project-sshd.local
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart router Fail2ban
+
+- name: Check that syslog created the SSH log file
+  ansible.builtin.stat:
+    path: /var/log/messages
+  register: router_fail2ban_log
+  until: router_fail2ban_log.stat.exists
+  retries: 5
+  delay: 1
+  when: not ansible_check_mode
+
+- name: Validate complete Fail2ban configuration
+  ansible.builtin.command: fail2ban-client -t
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Apply updated SSH and Fail2ban configuration
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start Fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    enabled: true
+    state: started
+
+- name: Verify SSH jail is running
+  ansible.builtin.command: fail2ban-client status sshd
+  register: router_fail2ban_status
+  changed_when: false
+  retries: 5
+  delay: 1
+  until: router_fail2ban_status.rc == 0
+  when: not ansible_check_mode
+
+- name: Show router SSH protection summary
+  ansible.builtin.debug:
+    msg:
+      - "Fail2ban protects SSH on {{ inventory_hostname }} port {{ router_fail2ban_ssh_port }}."
+      - "Ban after {{ router_fail2ban_maxretry }} failures in {{ router_fail2ban_findtime }} for {{ router_fail2ban_bantime }}."
+      - "Log: /var/log/messages; firewall action: nftables (separate f2b-table)."

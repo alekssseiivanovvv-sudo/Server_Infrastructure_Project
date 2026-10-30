@@ -1,0 +1,27 @@
+# Managed by Ansible. Override Alpine's packaged sshd jail.
+[sshd]
+enabled = true
+port = {{ router_fail2ban_ssh_port }}
+protocol = tcp
+# Poll a real syslog file: Alpine uses OpenRC, not systemd-journald.
+backend = polling
+logpath = /var/log/messages
+# SSH uses keys only; count rejected keys for valid users as well.
+filter = project-router-sshd[mode=normal, publickey=any]
+usedns = no
+ignoreself = true
+ignoreip = {{ router_fail2ban_ignoreip | join(' ') }}
+maxretry = {{ router_fail2ban_maxretry }}
+findtime = {{ router_fail2ban_findtime }}
+bantime = {{ router_fail2ban_bantime }}
+# Explicit action also overrides any packaged iptables-based action setting.
+# Separate input chain runs before lab_router (priority 0) and Tailscale.
+action = nftables[type=multiport, name=sshd, port="%(port)s", protocol="%(protocol)s", chain_priority=-10]
+
+# Alpine enables this second jail by default. Avoid duplicate iptables bans
+# on port 22; the managed sshd jail above handles rejected authentication.
+[sshd-ddos]
+enabled = false
+
+[sshd-key]
+enabled = false

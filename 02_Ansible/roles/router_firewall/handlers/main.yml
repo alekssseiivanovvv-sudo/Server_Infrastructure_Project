@@ -6,4 +6,6 @@
 - name: Apply router firewall
   ansible.builtin.service:
     name: nftables
-    state: restarted
+    # Alpine's stop/restart flushes the entire ruleset, including Fail2ban
+    # and Tailscale tables. Reload applies only our lab_router replacement.
+    state: reloaded

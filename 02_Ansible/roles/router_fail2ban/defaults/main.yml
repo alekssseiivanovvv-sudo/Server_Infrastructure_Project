@@ -1,0 +1,10 @@
+---
+router_fail2ban_ssh_port: "{{ vault_router_ssh_port }}"
+router_fail2ban_maxretry: 5
+router_fail2ban_findtime: 10m
+router_fail2ban_bantime: 1h
+# Add individual trusted administrator/control-node addresses here if needed.
+# Do not exempt the entire tailnet: SSH is reachable only through Tailscale.
+router_fail2ban_ignoreip:
+  - 127.0.0.1/8
+  - ::1
