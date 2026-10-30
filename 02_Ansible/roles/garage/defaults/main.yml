@@ -30,10 +30,6 @@ garage_app_bucket_name: product-images
 garage_app_bucket_max_size: 2GiB
 garage_app_key_name: shop-web
 
-garage_loki_bucket_name: monitoring-logs
-garage_loki_bucket_max_size: 8GiB
-garage_loki_key_name: loki-storage
-
 # Separate bucket and key for the Loki log storage (monitoring server).
 garage_loki_enabled: true
 garage_loki_bucket_name: loki-logs

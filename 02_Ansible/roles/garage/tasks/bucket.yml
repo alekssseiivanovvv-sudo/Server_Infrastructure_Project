@@ -119,6 +119,7 @@
       - "{{ garage_loki_bucket_max_size }}"
       - "{{ garage_loki_bucket_name }}"
   changed_when: false
+  when: garage_loki_bucket_max_size | string | length > 0
   run_once: true
   delegate_to: "{{ garage_coordinator }}"
 

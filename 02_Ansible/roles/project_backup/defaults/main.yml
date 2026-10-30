@@ -6,7 +6,7 @@ backup_status_dir: "{{ backup_work_dir }}/status"
 backup_cache_dir: "{{ backup_work_dir }}/restic-cache"
 
 backup_images_bucket: product-images
-backup_logs_bucket: monitoring-logs
+backup_logs_bucket: loki-logs
 backup_s3_remote_name: garage
 backup_s3_endpoint: http://127.0.0.1:3900
 backup_s3_region: garage
