@@ -12,7 +12,9 @@
 ## Overview
 
 An infrastructure lab distributed across two remote branches,
-a cloud segment** and external DNS provider***. The project focuses on service availability, secure connectivity, data protection, centralized monitoring and automation.
+a cloud segment** and external DNS provider***. The project focuses on IT infrastructure service availability, secure connectivity, data protection, centralized monitoring and automation.
+
+Built IT inrastructure is supposed to maintain a web application service for clients. In this example, this is a web-store, that is supposed to work 24/7 and continue working without interruption even if one the branches is completely down.
 
 Built as a college application servers project and portfolio project demonstrating practical skills in systems administration, DevOps, computer networking, and cybersecurity.
 The documentation covers the architecture, deployment, and step-by-step manual configuration of servers and services.
