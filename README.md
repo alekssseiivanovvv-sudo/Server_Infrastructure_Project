@@ -5,7 +5,7 @@
  ## Table of Contents
 
 - [Overview](#overview)
-- [Documentation (WIP)](documentation/)
+- [Documentation (WIP)](00_Documentation)
 
  ---
 
