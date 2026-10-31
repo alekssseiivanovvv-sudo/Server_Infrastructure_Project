@@ -28,8 +28,7 @@ The documentation covers the architecture, deployment, and step-by-step manual c
 ## Diagram
 </div>
 
-<img width="2591" height="2219" alt="Infra drawio(1)" src="https://github.com/user-attachments/assets/df66c8a7-ab28-446d-9e96-c4f29112d5e3" />
-
+<img width="2591" height="2219" alt="Infra drawio (5)" src="https://github.com/user-attachments/assets/a6715f0f-1588-4ea8-88f9-00cd2f5a71b9" />
 
 ---
 
